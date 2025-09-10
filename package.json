@@ -3,13 +3,14 @@
   "version": "0.1.0",
   "description": "Open a Unity project with the matching Editor version (macOS/Windows)",
   "type": "module",
-  "main": "dist/cli.js",
+  "main": "dist/launch.js",
   "bin": {
-    "launch-unity": "dist/cli.js"
+    "launch-unity": "dist/launch.js",
+    "quit-unity": "dist/quit.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/cli.js",
+    "start": "node dist/launch.js",
     "lint": "eslint . --ext .ts,.js",
     "lint:fix": "eslint . --ext .ts,.js --fix",
     "format": "prettier --write .",

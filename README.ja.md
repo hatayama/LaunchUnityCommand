@@ -21,6 +21,11 @@ npx launch-unity /path Android -- -executeMethod My.Build.Entry
 launch-unity
 launch-unity /path/to/MyUnityProject Android
 launch-unity . -- -buildTarget iOS -projectPath . # 上書きも可能
+
+# プロジェクトを開いている Unity を終了
+quit-unity                 # カレントディレクトリのプロジェクトの Unity を終了
+quit-unity /path/to/Proj   # 指定プロジェクトの Unity を終了
+quit-unity . --timeout 20000 --force
 ```
 
 指定した Unity プロジェクトの `ProjectSettings/ProjectVersion.txt` から必要な Unity Editor のバージョンを読み取り、
@@ -45,6 +50,17 @@ Unity Hub でインストール済みの該当バージョンを起動する mac
 ## プラットフォーム注意事項
 - macOS / Windows: Unity Hub のデフォルトインストールパスを前提にサポート。
 - Linux: 未対応です。対応 PR を歓迎します。
+
+## quit-unity 使い方（詳細）
+```bash
+# 基本構文
+quit-unity [PROJECT_PATH] [--timeout <ms>] [--force]
+
+# フラグ
+# -t, --timeout <ms>  正常終了を待つ時間（既定: 15000ms）
+# -f, --force         タイムアウト後に強制終了
+# -h, --help          ヘルプ
+```
 
 ## ライセンス
 - MIT。詳細は `LICENSE` を参照してください。

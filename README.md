@@ -21,6 +21,11 @@ npx launch-unity /path Android -- -executeMethod My.Build.Entry
 launch-unity
 launch-unity /path/to/MyUnityProject Android
 launch-unity . -- -buildTarget iOS -projectPath . # You can override
+
+# Quit the Unity instance holding a project open
+quit-unity                 # Quit Unity for current directory project
+quit-unity /path/to/Proj   # Quit Unity for a specific project
+quit-unity . --timeout 20000 --force
 ```
 
 A TypeScript CLI for macOS and Windows that reads the required Unity Editor version from
@@ -58,6 +63,14 @@ launch-unity [PROJECT_PATH] [PLATFORM]
 
 # Flags
 # -h, --help  Show help
+
+# Quit syntax
+quit-unity [PROJECT_PATH] [--timeout <ms>] [--force]
+
+# Flags (quit-unity)
+# -t, --timeout <ms>  Time to wait for graceful quit (default: 15000)
+# -f, --force         Force kill if not exited within timeout
+# -h, --help          Show help
 ```
 
 
