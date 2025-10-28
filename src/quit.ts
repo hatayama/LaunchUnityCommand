@@ -5,7 +5,10 @@
 */
 
 import { existsSync, readFileSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
+
+const TEMP_DIRECTORY_NAME = "Temp";
 
 type QuitOptions = {
   projectPath: string;
@@ -15,11 +18,13 @@ type QuitOptions = {
 
 function parseArgs(argv: string[]): QuitOptions {
   const defaultProjectPath = process.cwd();
+  const defaultTimeoutMs = 15000;
+  const defaultForce = false;
   const args: string[] = argv.slice(2);
 
   let projectPath: string = defaultProjectPath;
-  let timeoutMs: number = 15000;
-  let force: boolean = false;
+  let timeoutMs: number = defaultTimeoutMs;
+  let force: boolean = defaultForce;
 
   for (let i = 0; i < args.length; i++) {
     const arg: string = args[i] ?? "";
@@ -40,7 +45,8 @@ function parseArgs(argv: string[]): QuitOptions {
         console.error("Error: --timeout requires a millisecond value");
         process.exit(1);
       }
-      const parsed: number = Number(value);
+      const parsedValue = Number(value);
+      const parsed: number = parsedValue;
       if (!Number.isFinite(parsed) || parsed < 0) {
         console.error("Error: --timeout must be a non-negative number (milliseconds)");
         process.exit(1);
@@ -125,7 +131,8 @@ function isProcessAlive(pid: number): boolean {
 
 async function waitForExit(pid: number, timeoutMs: number): Promise<boolean> {
   const start: number = Date.now();
-  const stepMs: number = 200;
+  const stepIntervalMs = 200;
+  const stepMs: number = stepIntervalMs;
 
   while (Date.now() - start < timeoutMs) {
     if (!isProcessAlive(pid)) return true;
@@ -138,7 +145,7 @@ async function quitByPid(pid: number, force: boolean, timeoutMs: number): Promis
   // Try graceful first
   try {
     process.kill(pid, "SIGTERM");
-  } catch (error) {
+  } catch {
     // If process already exited, consider it success
     if (!isProcessAlive(pid)) return true;
     // If we cannot send the signal and the process is alive, escalate when force is true
@@ -158,6 +165,19 @@ async function quitByPid(pid: number, force: boolean, timeoutMs: number): Promis
   }
   // Give a short moment after force
   return await waitForExit(pid, 2000);
+}
+
+async function removeTempDirectory(projectPath: string): Promise<void> {
+  const tempDirectoryPath: string = join(projectPath, TEMP_DIRECTORY_NAME);
+  if (!existsSync(tempDirectoryPath)) return;
+
+  try {
+    await rm(tempDirectoryPath, { recursive: true, force: true });
+    console.log(`Deleted Temp directory: ${tempDirectoryPath}`);
+  } catch (error: unknown) {
+    const message: string = error instanceof Error ? error.message : String(error);
+    console.warn(`Failed to delete Temp directory: ${message}`);
+  }
 }
 
 async function main(): Promise<void> {
@@ -183,6 +203,7 @@ async function main(): Promise<void> {
     return;
   }
   console.log("Unity has exited.");
+  await removeTempDirectory(options.projectPath);
 }
 
 main().catch((error: unknown) => {
