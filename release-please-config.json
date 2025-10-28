@@ -1,0 +1,12 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "launch-unity",
+      "changelog-path": "CHANGELOG.md",
+      "release-as": "0.2.1"
+    }
+  }
+}
+
+
