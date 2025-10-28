@@ -5,7 +5,10 @@
 */
 
 import { existsSync, readFileSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
+
+const TEMP_DIRECTORY_NAME = "Temp";
 
 type QuitOptions = {
   projectPath: string;
@@ -164,6 +167,19 @@ async function quitByPid(pid: number, force: boolean, timeoutMs: number): Promis
   return await waitForExit(pid, 2000);
 }
 
+async function removeTempDirectory(projectPath: string): Promise<void> {
+  const tempDirectoryPath: string = join(projectPath, TEMP_DIRECTORY_NAME);
+  if (!existsSync(tempDirectoryPath)) return;
+
+  try {
+    await rm(tempDirectoryPath, { recursive: true, force: true });
+    console.log(`Deleted Temp directory: ${tempDirectoryPath}`);
+  } catch (error: unknown) {
+    const message: string = error instanceof Error ? error.message : String(error);
+    console.warn(`Failed to delete Temp directory: ${message}`);
+  }
+}
+
 async function main(): Promise<void> {
   const options: QuitOptions = parseArgs(process.argv);
   ensureProjectPath(options.projectPath);
@@ -187,6 +203,7 @@ async function main(): Promise<void> {
     return;
   }
   console.log("Unity has exited.");
+  await removeTempDirectory(options.projectPath);
 }
 
 main().catch((error: unknown) => {
