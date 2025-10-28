@@ -5,12 +5,19 @@
 */
 
 import { execFile, spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, lstatSync, realpathSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 type LaunchOptions = {
+  projectPath?: string;
+  platform?: string | undefined;
+  unityArgs: string[];
+  searchMaxDepth: number; // -1 for unlimited; default 3
+};
+
+type LaunchResolvedOptions = {
   projectPath: string;
   platform?: string | undefined;
   unityArgs: string[];
@@ -32,7 +39,6 @@ const UNITY_LOCKFILE_NAME = "UnityLockfile";
 const TEMP_DIRECTORY_NAME = "Temp";
 
 function parseArgs(argv: string[]): LaunchOptions {
-  const defaultProjectPath: string = process.cwd();
   const args: string[] = argv.slice(2);
 
   const doubleDashIndex: number = args.indexOf("--");
@@ -40,11 +46,33 @@ function parseArgs(argv: string[]): LaunchOptions {
   const unityArgs: string[] = doubleDashIndex >= 0 ? args.slice(doubleDashIndex + 1) : [];
 
   const positionals: string[] = [];
+  let maxDepth: number = 3; // default 3; -1 means unlimited
 
-  for (const arg of cliArgs) {
+  for (let i = 0; i < cliArgs.length; i++) {
+    const arg = cliArgs[i] ?? "";
     if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
+    }
+    if (arg.startsWith("--max-depth")) {
+      const parts = arg.split("=");
+      if (parts.length === 2) {
+        const value = Number.parseInt(parts[1] ?? "", 10);
+        if (Number.isFinite(value)) {
+          maxDepth = value;
+        }
+        continue;
+      }
+      const next = cliArgs[i + 1];
+      if (typeof next === "string" && !next.startsWith("-")) {
+        const value = Number.parseInt(next, 10);
+        if (Number.isFinite(value)) {
+          maxDepth = value;
+        }
+        i += 1;
+        continue;
+      }
+      continue;
     }
     if (arg.startsWith("-")) {
       continue;
@@ -52,9 +80,35 @@ function parseArgs(argv: string[]): LaunchOptions {
     positionals.push(arg);
   }
 
-  const projectPath: string = positionals[0] ? resolve(positionals[0]) : defaultProjectPath;
-  const platform: string | undefined = positionals[1] ? String(positionals[1]) : undefined;
-  const options: LaunchOptions = { projectPath, platform, unityArgs };
+  let projectPath: string | undefined;
+  let platform: string | undefined;
+
+  if (positionals.length === 0) {
+    projectPath = undefined; // trigger search
+    platform = undefined;
+  } else if (positionals.length === 1) {
+    const first = positionals[0] ?? "";
+    const resolvedFirst = resolve(first);
+    if (existsSync(resolvedFirst)) {
+      projectPath = resolvedFirst;
+      platform = undefined;
+    } else {
+      // Treat as platform when path does not exist
+      projectPath = undefined; // trigger search
+      platform = String(first);
+    }
+  } else {
+    projectPath = resolve(positionals[0] ?? "");
+    platform = String(positionals[1] ?? "");
+  }
+
+  const options: LaunchOptions = { unityArgs, searchMaxDepth: maxDepth };
+  if (projectPath !== undefined) {
+    options.projectPath = projectPath;
+  }
+  if (platform !== undefined) {
+    options.platform = platform;
+  }
   return options;
 }
 
@@ -73,7 +127,8 @@ Forwarding:
   If UNITY_ARGS includes -buildTarget, the PLATFORM argument is ignored.
 
 Flags:
-  -h, --help    Show this help message
+  -h, --help          Show this help message
+  --max-depth <N>     Search depth when PROJECT_PATH is omitted (default 3, -1 unlimited)
 `;
   process.stdout.write(help);
 }
@@ -395,7 +450,101 @@ function hasBuildTargetArg(unityArgs: string[]): boolean {
   return false;
 }
 
-function launch(opts: LaunchOptions): void {
+const EXCLUDED_DIR_NAMES: Set<string> = new Set([
+  "library",
+  "temp",
+  "logs",
+  "obj",
+  ".git",
+  "node_modules",
+  ".idea",
+  ".vscode",
+  ".vs",
+]);
+
+function isUnityProjectRoot(candidateDir: string): boolean {
+  const versionFile: string = join(candidateDir, "ProjectSettings", "ProjectVersion.txt");
+  const hasVersion: boolean = existsSync(versionFile);
+  if (!hasVersion) {
+    return false;
+  }
+  const libraryDir: string = join(candidateDir, "Library");
+  return existsSync(libraryDir);
+}
+
+function listSubdirectoriesSorted(dir: string): string[] {
+  let entries: string[] = [];
+  try {
+    const dirents = readdirSync(dir, { withFileTypes: true });
+    const subdirs = dirents
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+      .filter((name) => !EXCLUDED_DIR_NAMES.has(name.toLocaleLowerCase()));
+    subdirs.sort((a, b) => a.localeCompare(b));
+    entries = subdirs.map((name) => join(dir, name));
+  } catch (_err) {
+    // Ignore directories we cannot read
+    entries = [];
+  }
+  return entries;
+}
+
+function findUnityProjectBfs(rootDir: string, maxDepth: number): string | undefined {
+  const queue: Array<{ dir: string; depth: number }> = [];
+  let rootCanonical: string;
+  try {
+    rootCanonical = realpathSync(rootDir);
+  } catch (_err) {
+    rootCanonical = rootDir;
+  }
+  queue.push({ dir: rootCanonical, depth: 0 });
+  const visited: Set<string> = new Set([toComparablePath(normalizePath(rootCanonical))]);
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) {
+      continue;
+    }
+    const { dir, depth } = current;
+
+    if (isUnityProjectRoot(dir)) {
+      return normalizePath(dir);
+    }
+
+    const canDescend: boolean = maxDepth === -1 || depth < maxDepth;
+    if (!canDescend) {
+      continue;
+    }
+
+    const children: string[] = listSubdirectoriesSorted(dir);
+    for (const child of children) {
+      let childCanonical: string = child;
+      try {
+        const stat = lstatSync(child);
+        if (stat.isSymbolicLink()) {
+          try {
+            childCanonical = realpathSync(child);
+          } catch (_e) {
+            // Broken symlink: skip
+            continue;
+          }
+        }
+      } catch (_err) {
+        continue;
+      }
+
+      const key = toComparablePath(normalizePath(childCanonical));
+      if (visited.has(key)) {
+        continue;
+      }
+      visited.add(key);
+      queue.push({ dir: childCanonical, depth: depth + 1 });
+    }
+  }
+  return undefined;
+}
+
+function launch(opts: LaunchResolvedOptions): void {
   const { projectPath, platform, unityArgs } = opts;
   const unityVersion: string = getUnityVersion(projectPath);
   const unityPath: string = getUnityPath(unityVersion);
@@ -428,20 +577,41 @@ function launch(opts: LaunchOptions): void {
 
 async function main(): Promise<void> {
   const options: LaunchOptions = parseArgs(process.argv);
-  ensureProjectPath(options.projectPath);
 
-  const runningProcess = await findRunningUnityProcess(options.projectPath);
+  let resolvedProjectPath: string | undefined = options.projectPath;
+  if (!resolvedProjectPath) {
+    const searchRoot = process.cwd();
+    const depthInfo = options.searchMaxDepth === -1 ? "unlimited" : String(options.searchMaxDepth);
+    console.log(`No PROJECT_PATH provided. Searching under ${searchRoot} (max-depth: ${depthInfo})...`);
+    const found = findUnityProjectBfs(searchRoot, options.searchMaxDepth);
+    if (!found) {
+      console.error(`Error: Unity project not found under ${searchRoot}.`);
+      process.exit(1);
+      return;
+    }
+    console.log(`Selected project: ${found}`);
+    resolvedProjectPath = found;
+  }
+
+  ensureProjectPath(resolvedProjectPath);
+
+  const runningProcess = await findRunningUnityProcess(resolvedProjectPath);
   if (runningProcess) {
     console.log(
-      `Unity process already running for project: ${options.projectPath} (PID: ${runningProcess.pid})`,
+      `Unity process already running for project: ${resolvedProjectPath} (PID: ${runningProcess.pid})`,
     );
     await focusUnityProcess(runningProcess.pid);
     process.exit(0);
     return;
   }
 
-  await handleStaleLockfile(options.projectPath);
-  launch(options);
+  await handleStaleLockfile(resolvedProjectPath);
+  const resolved: LaunchResolvedOptions = {
+    projectPath: resolvedProjectPath,
+    platform: options.platform,
+    unityArgs: options.unityArgs,
+  };
+  launch(resolved);
 }
 
 main().catch((error: unknown) => {
