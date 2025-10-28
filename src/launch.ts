@@ -4,10 +4,11 @@
   Platforms: macOS, Windows
 */
 
-import { spawn } from "node:child_process";
-import { existsSync, readFileSync, rmSync, createReadStream, createWriteStream } from "node:fs";
+import { execFile, spawn } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import readline from "node:readline";
+import { promisify } from "node:util";
 
 type LaunchOptions = {
   projectPath: string;
@@ -15,11 +16,26 @@ type LaunchOptions = {
   unityArgs: string[];
 };
 
+type UnityProcessInfo = {
+  pid: number;
+  projectPath: string;
+};
+
+const execFileAsync = promisify(execFile);
+const UNITY_EXECUTABLE_PATTERN_MAC = /Unity\.app\/Contents\/MacOS\/Unity/i;
+const UNITY_EXECUTABLE_PATTERN_WINDOWS = /Unity\.exe/i;
+const PROJECT_PATH_PATTERN = /-(?:projectPath|projectpath)(?:=|\s+)("[^"]+"|'[^']+'|[^\s"']+)/i;
+const PROCESS_LIST_COMMAND_MAC = "ps";
+const PROCESS_LIST_ARGS_MAC = ["-axo", "pid=,command=", "-ww"];
+const WINDOWS_POWERSHELL = "powershell";
+const UNITY_LOCKFILE_NAME = "UnityLockfile";
+const TEMP_DIRECTORY_NAME = "Temp";
+
 function parseArgs(argv: string[]): LaunchOptions {
-  const defaultProjectPath = process.cwd();
+  const defaultProjectPath: string = process.cwd();
   const args: string[] = argv.slice(2);
 
-  const doubleDashIndex = args.indexOf("--");
+  const doubleDashIndex: number = args.indexOf("--");
   const cliArgs: string[] = doubleDashIndex >= 0 ? args.slice(0, doubleDashIndex) : args;
   const unityArgs: string[] = doubleDashIndex >= 0 ? args.slice(doubleDashIndex + 1) : [];
 
@@ -29,12 +45,11 @@ function parseArgs(argv: string[]): LaunchOptions {
     if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
-    } else if (arg.startsWith("-")) {
-      // Unknown flags are ignored to keep CLI permissive
-      continue;
-    } else {
-      positionals.push(arg);
     }
+    if (arg.startsWith("-")) {
+      continue;
+    }
+    positionals.push(arg);
   }
 
   const projectPath: string = positionals[0] ? resolve(positionals[0]) : defaultProjectPath;
@@ -87,7 +102,9 @@ function getUnityPathWindows(version: string): string {
   const localAppData: string | undefined = process.env["LOCALAPPDATA"];
 
   const addCandidate = (base: string | undefined): void => {
-    if (!base) return;
+    if (!base) {
+      return;
+    }
     candidates.push(join(base, "Unity", "Hub", "Editor", version, "Editor", "Unity.exe"));
   };
 
@@ -97,7 +114,9 @@ function getUnityPathWindows(version: string): string {
   candidates.push(join("C:\\", "Program Files", "Unity", "Hub", "Editor", version, "Editor", "Unity.exe"));
 
   for (const candidate of candidates) {
-    if (existsSync(candidate)) return candidate;
+    if (existsSync(candidate)) {
+      return candidate;
+    }
   }
   return candidates[0] ?? join("C:\\", "Program Files", "Unity", "Hub", "Editor", version, "Editor", "Unity.exe");
 }
@@ -119,144 +138,259 @@ function ensureProjectPath(projectPath: string): void {
   }
 }
 
-function createPromptInterface(): { rl: readline.Interface; close: () => void } | null {
-  if (process.stdin.isTTY && process.stdout.isTTY) {
-    const rl: readline.Interface = readline.createInterface({ input: process.stdin, output: process.stdout });
-    const close = (): void => rl.close();
-    return { rl, close };
+const removeTrailingSeparators = (target: string): string => {
+  let trimmed = target;
+  while (trimmed.length > 1 && (trimmed.endsWith("/") || trimmed.endsWith("\\"))) {
+    trimmed = trimmed.slice(0, -1);
+  }
+  return trimmed;
+};
+
+const normalizePath = (target: string): string => {
+  const resolvedPath = resolve(target);
+  const trimmed = removeTrailingSeparators(resolvedPath);
+  return trimmed;
+};
+
+const toComparablePath = (value: string): string => {
+  return value.replace(/\\/g, "/").toLocaleLowerCase();
+};
+
+const pathsEqual = (left: string, right: string): boolean => {
+  return toComparablePath(normalizePath(left)) === toComparablePath(normalizePath(right));
+};
+
+function extractProjectPath(command: string): string | undefined {
+  const match = command.match(PROJECT_PATH_PATTERN);
+  if (!match) {
+    return undefined;
+  }
+
+  const raw = match[1];
+  if (!raw) {
+    return undefined;
+  }
+
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
+    return trimmed.slice(1, -1);
+  }
+  if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+async function listUnityProcessesMac(): Promise<UnityProcessInfo[]> {
+  let stdout = "";
+  try {
+    const result = await execFileAsync(PROCESS_LIST_COMMAND_MAC, PROCESS_LIST_ARGS_MAC);
+    stdout = result.stdout;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Failed to retrieve Unity process list: ${message}`);
+    return [];
+  }
+
+  const lines = stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const processes: UnityProcessInfo[] = [];
+
+  for (const line of lines) {
+    const match = line.match(/^(\d+)\s+(.*)$/);
+    if (!match) {
+      continue;
+    }
+
+    const pidValue = Number.parseInt(match[1] ?? "", 10);
+    if (!Number.isFinite(pidValue)) {
+      continue;
+    }
+
+    const command = match[2] ?? "";
+    if (!UNITY_EXECUTABLE_PATTERN_MAC.test(command)) {
+      continue;
+    }
+
+    const projectArgument = extractProjectPath(command);
+    if (!projectArgument) {
+      continue;
+    }
+
+    processes.push({
+      pid: pidValue,
+      projectPath: normalizePath(projectArgument),
+    });
+  }
+
+  return processes;
+}
+
+async function listUnityProcessesWindows(): Promise<UnityProcessInfo[]> {
+  const scriptLines: string[] = [
+    "$ErrorActionPreference = 'Stop'",
+    "$processes = Get-CimInstance Win32_Process -Filter \"Name = 'Unity.exe'\" | Where-Object { $_.CommandLine }",
+    "foreach ($process in $processes) {",
+    "  $commandLine = $process.CommandLine -replace \"`r\", ' ' -replace \"`n\", ' '",
+    "  Write-Output (\"{0}|{1}\" -f $process.ProcessId, $commandLine)",
+    "}",
+  ];
+
+  let stdout = "";
+  try {
+    const result = await execFileAsync(WINDOWS_POWERSHELL, ["-NoProfile", "-Command", scriptLines.join("\n")]);
+    stdout = result.stdout ?? "";
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Failed to retrieve Unity process list on Windows: ${message}`);
+    return [];
+  }
+
+  const lines = stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const processes: UnityProcessInfo[] = [];
+
+  for (const line of lines) {
+    const delimiterIndex = line.indexOf("|");
+    if (delimiterIndex < 0) {
+      continue;
+    }
+
+    const pidText = line.slice(0, delimiterIndex).trim();
+    const command = line.slice(delimiterIndex + 1).trim();
+
+    const pidValue = Number.parseInt(pidText, 10);
+    if (!Number.isFinite(pidValue)) {
+      continue;
+    }
+
+    if (!UNITY_EXECUTABLE_PATTERN_WINDOWS.test(command)) {
+      continue;
+    }
+
+    const projectArgument = extractProjectPath(command);
+    if (!projectArgument) {
+      continue;
+    }
+
+    processes.push({
+      pid: pidValue,
+      projectPath: normalizePath(projectArgument),
+    });
+  }
+
+  return processes;
+}
+
+async function listUnityProcesses(): Promise<UnityProcessInfo[]> {
+  if (process.platform === "darwin") {
+    return await listUnityProcessesMac();
+  }
+  if (process.platform === "win32") {
+    return await listUnityProcessesWindows();
+  }
+  return [];
+}
+
+async function findRunningUnityProcess(projectPath: string): Promise<UnityProcessInfo | undefined> {
+  const normalizedTarget: string = normalizePath(projectPath);
+  const processes = await listUnityProcesses();
+  return processes.find((candidate) => pathsEqual(candidate.projectPath, normalizedTarget));
+}
+
+async function focusUnityProcess(pid: number): Promise<void> {
+  if (process.platform === "darwin") {
+    await focusUnityProcessMac(pid);
+    return;
+  }
+  if (process.platform === "win32") {
+    await focusUnityProcessWindows(pid);
+  }
+}
+
+async function focusUnityProcessMac(pid: number): Promise<void> {
+  const script = `tell application "System Events" to set frontmost of (first process whose unix id is ${pid}) to true`;
+  try {
+    await execFileAsync("osascript", ["-e", script]);
+    console.log("Brought existing Unity to the front.");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Failed to bring Unity to front: ${message}`);
+  }
+}
+
+async function focusUnityProcessWindows(pid: number): Promise<void> {
+  const addTypeLines: string[] = [
+    "Add-Type -TypeDefinition @\"",
+    "using System;",
+    "using System.Runtime.InteropServices;",
+    "public static class Win32Interop {",
+    "  [DllImport(\"user32.dll\")] public static extern bool SetForegroundWindow(IntPtr hWnd);",
+    "  [DllImport(\"user32.dll\")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);",
+    "}",
+    "\"@",
+  ];
+
+  const scriptLines: string[] = [
+    "$ErrorActionPreference = 'Stop'",
+    ...addTypeLines,
+    `try { $process = Get-Process -Id ${pid} -ErrorAction Stop } catch { return }`,
+    "$handle = $process.MainWindowHandle",
+    "if ($handle -eq 0) { return }",
+    "[Win32Interop]::ShowWindowAsync($handle, 9) | Out-Null",
+    "[Win32Interop]::SetForegroundWindow($handle) | Out-Null",
+  ];
+
+  try {
+    await execFileAsync(WINDOWS_POWERSHELL, ["-NoProfile", "-Command", scriptLines.join("\n")]);
+    console.log("Brought existing Unity to the front.");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Failed to bring Unity to front on Windows: ${message}`);
+  }
+}
+
+async function handleStaleLockfile(projectPath: string): Promise<void> {
+  const tempDirectoryPath: string = join(projectPath, TEMP_DIRECTORY_NAME);
+  const lockfilePath: string = join(tempDirectoryPath, UNITY_LOCKFILE_NAME);
+  if (!existsSync(lockfilePath)) {
+    return;
+  }
+
+  console.log(`UnityLockfile found without active Unity process: ${lockfilePath}`);
+  console.log("Assuming previous crash. Cleaning Temp directory and continuing launch.");
+
+  try {
+    await rm(tempDirectoryPath, { recursive: true, force: true });
+    console.log("Deleted Temp directory.");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Failed to delete Temp directory: ${message}`);
   }
 
   try {
-    if (process.platform === "win32") {
-      const inCandidates: string[] = ["\\\\.\\CONIN$", "CONIN$"];
-      const outCandidates: string[] = ["\\\\.\\CONOUT$", "CONOUT$"];
-      for (const inPath of inCandidates) {
-        for (const outPath of outCandidates) {
-          try {
-            const input = createReadStream(inPath);
-            const output = createWriteStream(outPath);
-            const rl: readline.Interface = readline.createInterface({ input, output });
-            const close = (): void => {
-              rl.close();
-              input.destroy();
-              output.end();
-            };
-            return { rl, close };
-          } catch {
-            continue;
-          }
-        }
-      }
-    } else {
-      const input = createReadStream("/dev/tty");
-      const output = createWriteStream("/dev/tty");
-      const rl: readline.Interface = readline.createInterface({ input, output });
-      const close = (): void => {
-        rl.close();
-        input.destroy();
-        output.end();
-      };
-      return { rl, close };
-    }
-  } catch {
-    // fallthrough
+    await rm(lockfilePath, { force: true });
+    console.log("Deleted UnityLockfile.");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Failed to delete UnityLockfile: ${message}`);
   }
-  return null;
-}
-
-async function handleUnityLockfilePrompt(lockfilePath: string): Promise<boolean> {
-  // Prefer single-key confirmation when a real TTY is available
-  if (process.stdin.isTTY && process.stdout.isTTY && typeof (process.stdin as unknown as { setRawMode?: (mode: boolean) => void }).setRawMode === "function") {
-    const confirmedByKey = await promptYesNoSingleKey("Delete UnityLockfile and continue? Type 'y' to continue; anything else aborts: ");
-    if (!confirmedByKey) {
-      console.log("Aborted by user.");
-      return false;
-    }
-    rmSync(lockfilePath, { force: true });
-    console.log("Deleted UnityLockfile. Continuing launch.");
-    return true;
-  }
-
-  // Fallback to line-based prompt through OS console handles
-  const prompt = createPromptInterface();
-  if (!prompt) {
-    console.error("UnityLockfile exists. No interactive console available for confirmation.");
-    return false;
-  }
-
-  const confirmed: boolean = await new Promise<boolean>((resolve) => {
-    prompt.rl.question("Delete UnityLockfile and continue? Type 'y' to continue; anything else aborts: ", (answer: string) => {
-      resolve(answer.trim() === "y");
-    });
-  });
-  prompt.close();
-
-  if (!confirmed) {
-    console.log("Aborted by user.");
-    return false;
-  }
-
-  rmSync(lockfilePath, { force: true });
-  console.log("Deleted UnityLockfile. Continuing launch.");
-  return true;
-}
-
-function stdinSupportsRawMode(): boolean {
-  const stdin = process.stdin as unknown as { isTTY?: boolean; setRawMode?: (mode: boolean) => void };
-  return Boolean(stdin && stdin.isTTY && typeof stdin.setRawMode === "function" && process.stdout.isTTY);
-}
-
-async function promptYesNoSingleKey(message: string): Promise<boolean> {
-  if (!stdinSupportsRawMode()) return false;
-
-  const stdin = process.stdin as NodeJS.ReadStream & { setRawMode?: (mode: boolean) => void };
-
-  return await new Promise<boolean>((resolve) => {
-    const handleData = (data: Buffer): void => {
-      const firstByte: number = data[0] ?? 0;
-      const char: string = data.toString();
-
-      let result = false;
-      if (char === "y") {
-        result = true;
-      } else if (firstByte === 3 /* Ctrl+C */ || firstByte === 27 /* ESC */ || char === "n" || char === "N" || firstByte === 13 /* Enter */) {
-        result = false;
-      } else {
-        result = false;
-      }
-
-      process.stdout.write("\n");
-      cleanup();
-      resolve(result);
-    };
-
-    const cleanup = (): void => {
-      if (typeof stdin.setRawMode === "function") stdin.setRawMode(false);
-      stdin.pause();
-      stdin.removeListener("data", handleData);
-    };
-
-    process.stdout.write(message);
-    if (typeof stdin.setRawMode === "function") stdin.setRawMode(true);
-    stdin.resume();
-    stdin.once("data", handleData);
-  });
-}
-
-async function checkUnityRunning(projectPath: string): Promise<boolean> {
-  const lockfile: string = join(projectPath, "Temp", "UnityLockfile");
-  if (!existsSync(lockfile)) return true;
-
-  console.log(`UnityLockfile found: ${lockfile}`);
-  console.log("Another Unity process may be using this project.");
-
-  return await handleUnityLockfilePrompt(lockfile);
 }
 
 function hasBuildTargetArg(unityArgs: string[]): boolean {
   for (const arg of unityArgs) {
-    if (arg === "-buildTarget") return true;
-    if (arg.startsWith("-buildTarget=")) return true;
+    if (arg === "-buildTarget") {
+      return true;
+    }
+    if (arg.startsWith("-buildTarget=")) {
+      return true;
+    }
   }
   return false;
 }
@@ -295,11 +429,18 @@ function launch(opts: LaunchOptions): void {
 async function main(): Promise<void> {
   const options: LaunchOptions = parseArgs(process.argv);
   ensureProjectPath(options.projectPath);
-  const ok: boolean = await checkUnityRunning(options.projectPath);
-  if (!ok) {
+
+  const runningProcess = await findRunningUnityProcess(options.projectPath);
+  if (runningProcess) {
+    console.log(
+      `Unity process already running for project: ${options.projectPath} (PID: ${runningProcess.pid})`,
+    );
+    await focusUnityProcess(runningProcess.pid);
     process.exit(0);
     return;
   }
+
+  await handleStaleLockfile(options.projectPath);
   launch(options);
 }
 

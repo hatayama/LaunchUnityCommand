@@ -15,11 +15,13 @@ type QuitOptions = {
 
 function parseArgs(argv: string[]): QuitOptions {
   const defaultProjectPath = process.cwd();
+  const defaultTimeoutMs = 15000;
+  const defaultForce = false;
   const args: string[] = argv.slice(2);
 
   let projectPath: string = defaultProjectPath;
-  let timeoutMs: number = 15000;
-  let force: boolean = false;
+  let timeoutMs: number = defaultTimeoutMs;
+  let force: boolean = defaultForce;
 
   for (let i = 0; i < args.length; i++) {
     const arg: string = args[i] ?? "";
@@ -40,7 +42,8 @@ function parseArgs(argv: string[]): QuitOptions {
         console.error("Error: --timeout requires a millisecond value");
         process.exit(1);
       }
-      const parsed: number = Number(value);
+      const parsedValue = Number(value);
+      const parsed: number = parsedValue;
       if (!Number.isFinite(parsed) || parsed < 0) {
         console.error("Error: --timeout must be a non-negative number (milliseconds)");
         process.exit(1);
@@ -125,7 +128,8 @@ function isProcessAlive(pid: number): boolean {
 
 async function waitForExit(pid: number, timeoutMs: number): Promise<boolean> {
   const start: number = Date.now();
-  const stepMs: number = 200;
+  const stepIntervalMs = 200;
+  const stepMs: number = stepIntervalMs;
 
   while (Date.now() - start < timeoutMs) {
     if (!isProcessAlive(pid)) return true;
@@ -138,7 +142,7 @@ async function quitByPid(pid: number, force: boolean, timeoutMs: number): Promis
   // Try graceful first
   try {
     process.kill(pid, "SIGTERM");
-  } catch (error) {
+  } catch {
     // If process already exited, consider it success
     if (!isProcessAlive(pid)) return true;
     // If we cannot send the signal and the process is alive, escalate when force is true

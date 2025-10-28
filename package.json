@@ -1,6 +1,6 @@
 {
   "name": "launch-unity",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Open a Unity project with the matching Editor version (macOS/Windows)",
   "type": "module",
   "main": "dist/launch.js",
