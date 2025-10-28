@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/hatayama/LaunchUnityCommand/compare/v0.2.1...v0.3.0) (2025-10-28)
+
+
+### Features
+
+* update launch ([#4](https://github.com/hatayama/LaunchUnityCommand/issues/4)) ([cc591be](https://github.com/hatayama/LaunchUnityCommand/commit/cc591be729b2d07652377627672d25990d6728a7))
+
 ## 0.2.1 (2025-10-28)
 
 
