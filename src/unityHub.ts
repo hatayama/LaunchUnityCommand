@@ -1,5 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 type UnityHubProjectEntry = {
   readonly title?: string | null;
@@ -16,7 +16,10 @@ type UnityHubProjectsJson = {
 
 const resolveUnityHubProjectFiles = (): string[] => {
   if (process.platform === "darwin") {
-    const home: string = process.env.HOME ?? "";
+    const home: string | undefined = process.env.HOME;
+    if (!home) {
+      return [];
+    }
     const base: string = join(home, "Library", "Application Support", "UnityHub");
     return [join(base, "projects-v1.json"), join(base, "projects.json")];
   }
@@ -29,6 +32,27 @@ const resolveUnityHubProjectFiles = (): string[] => {
     return [join(base, "projects-v1.json"), join(base, "projects.json")];
   }
   return [];
+};
+
+const removeTrailingSeparators = (target: string): string => {
+  let trimmed = target;
+  while (trimmed.length > 1 && (trimmed.endsWith("/") || trimmed.endsWith("\\"))) {
+    trimmed = trimmed.slice(0, -1);
+  }
+  return trimmed;
+};
+
+const normalizePath = (target: string): string => {
+  const resolvedPath = resolve(target);
+  return removeTrailingSeparators(resolvedPath);
+};
+
+const toComparablePath = (value: string): string => {
+  return value.replace(/\\/g, "/").toLocaleLowerCase();
+};
+
+const pathsEqual = (left: string, right: string): boolean => {
+  return toComparablePath(normalizePath(left)) === toComparablePath(normalizePath(right));
 };
 
 export const updateLastModifiedIfExists = async (
@@ -63,9 +87,10 @@ export const updateLastModifiedIfExists = async (
       return;
     }
 
-    const projectKey: string | undefined = Object.keys(json.data).find(
-      (key) => json.data?.[key]?.path === projectPath,
-    );
+    const projectKey: string | undefined = Object.keys(json.data).find((key) => {
+      const entryPath = json.data?.[key]?.path;
+      return entryPath ? pathsEqual(entryPath, projectPath) : false;
+    });
     if (!projectKey) {
       // Project not registered in Hub; do nothing
       return;
