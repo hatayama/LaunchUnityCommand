@@ -10,6 +10,8 @@ import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { updateLastModifiedIfExists } from "./unityHub.js";
+
 type LaunchOptions = {
   projectPath?: string;
   platform?: string | undefined;
@@ -612,6 +614,13 @@ async function main(): Promise<void> {
     unityArgs: options.unityArgs,
   };
   launch(resolved);
+  // Best-effort update of Unity Hub's lastModified timestamp.
+  try {
+    await updateLastModifiedIfExists(resolvedProjectPath, new Date());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Failed to update Unity Hub lastModified: ${message}`);
+  }
 }
 
 main().catch((error: unknown) => {
