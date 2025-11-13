@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/hatayama/LaunchUnityCommand/compare/v0.4.0...v0.5.0) (2025-11-13)
+
+
+### Features
+
+* **launch:** add auxiliary process detection for Unity on macOS and Windows ([#8](https://github.com/hatayama/LaunchUnityCommand/issues/8)) ([41c1b55](https://github.com/hatayama/LaunchUnityCommand/commit/41c1b550b5dcc7aa2ddbee99ef94d58214b5b852))
+
 ## [0.4.0](https://github.com/hatayama/LaunchUnityCommand/compare/v0.3.0...v0.4.0) (2025-11-11)
 
 
