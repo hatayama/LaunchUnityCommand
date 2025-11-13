@@ -238,6 +238,14 @@ function extractProjectPath(command: string): string | undefined {
   return trimmed;
 }
 
+const isUnityAuxiliaryProcess = (command: string): boolean => {
+  const normalizedCommand: string = command.toLowerCase();
+  if (normalizedCommand.includes("-batchmode")) {
+    return true;
+  }
+  return normalizedCommand.includes("assetimportworker");
+};
+
 async function listUnityProcessesMac(): Promise<UnityProcessInfo[]> {
   let stdout = "";
   try {
@@ -269,6 +277,9 @@ async function listUnityProcessesMac(): Promise<UnityProcessInfo[]> {
 
     const command = match[2] ?? "";
     if (!UNITY_EXECUTABLE_PATTERN_MAC.test(command)) {
+      continue;
+    }
+    if (isUnityAuxiliaryProcess(command)) {
       continue;
     }
 
@@ -328,6 +339,9 @@ async function listUnityProcessesWindows(): Promise<UnityProcessInfo[]> {
     }
 
     if (!UNITY_EXECUTABLE_PATTERN_WINDOWS.test(command)) {
+      continue;
+    }
+    if (isUnityAuxiliaryProcess(command)) {
       continue;
     }
 
