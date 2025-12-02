@@ -18,7 +18,7 @@ npx launch-unity
 ## 使用例
 ```bash
 # NPX（推奨 / インストール不要）
-npx launch-unity                    # カレントディレクトリを開く（ビルドターゲット未指定時はプロジェクトの現在のビルドターゲットを使用）
+npx launch-unity                    # カレントディレクトリから3階層下までUnityプロジェクトを探索して開く
 npx launch-unity /path/to/Proj      # プロジェクトを指定
 npx launch-unity /path Android      # ビルドターゲットを指定
 npx -y launch-unity                 # npx の「Ok to proceed?」確認をスキップ
@@ -31,11 +31,6 @@ npx launch-unity /path Android -- -executeMethod My.Build.Entry
 launch-unity
 launch-unity /path/to/MyUnityProject Android
 launch-unity . -- -buildTarget iOS -projectPath . # 上書きも可能
-
-# プロジェクトを開いている Unity を終了
-quit-unity                 # カレントディレクトリのプロジェクトの Unity を終了
-quit-unity /path/to/Proj   # 指定プロジェクトの Unity を終了
-quit-unity . --timeout 20000 --force
 ```
 
 指定した Unity プロジェクトの `ProjectSettings/ProjectVersion.txt` から必要な Unity Editor のバージョンを読み取り、
@@ -60,17 +55,6 @@ Unity Hub でインストール済みの該当バージョンを起動する mac
 ## プラットフォーム注意事項
 - macOS / Windows: Unity Hub のデフォルトインストールパスを前提にサポート。
 - Linux: 未対応です。対応 PR を歓迎します。
-
-## quit-unity 使い方（詳細）
-```bash
-# 基本構文
-quit-unity [PROJECT_PATH] [--timeout <ms>] [--force]
-
-# フラグ
-# -t, --timeout <ms>  正常終了を待つ時間（既定: 15000ms）
-# -f, --force         タイムアウト後に強制終了
-# -h, --help          ヘルプ
-```
 
 ## セキュリティ
 

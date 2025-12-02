@@ -5,8 +5,7 @@
   "type": "module",
   "main": "dist/launch.js",
   "bin": {
-    "launch-unity": "dist/launch.js",
-    "quit-unity": "dist/quit.js"
+    "launch-unity": "dist/launch.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
