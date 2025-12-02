@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/hatayama/LaunchUnityCommand/compare/v0.6.0...v0.6.1) (2025-12-02)
+
+
+### Bug Fixes
+
+* add build step to npm publish workflow ([#21](https://github.com/hatayama/LaunchUnityCommand/issues/21)) ([bcc380f](https://github.com/hatayama/LaunchUnityCommand/commit/bcc380f92bc8facb92ff2b55f11fb66691487975))
+
 ## [0.6.0](https://github.com/hatayama/LaunchUnityCommand/compare/v0.5.0...v0.6.0) (2025-12-02)
 
 
