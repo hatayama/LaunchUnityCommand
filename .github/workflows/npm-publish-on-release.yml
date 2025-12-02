@@ -51,6 +51,9 @@ jobs:
       - name: Install
         if: ${{ steps.plan.outputs.has_release == 'true' && steps.plan.outputs.already != 'true' }}
         run: npm ci
+      - name: Build
+        if: ${{ steps.plan.outputs.has_release == 'true' && steps.plan.outputs.already != 'true' }}
+        run: npm run build
       - name: Publish
         if: ${{ steps.plan.outputs.has_release == 'true' && steps.plan.outputs.already != 'true' }}
         run: npm publish --access public
