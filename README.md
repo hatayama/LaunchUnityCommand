@@ -5,6 +5,16 @@ launch-unity
 
 Without Unity Hub, launch Unity from the command line.
 
+## Installation
+
+```bash
+# Global install
+npm install -g launch-unity
+
+# Use via npx (no install required)
+npx launch-unity
+```
+
 ## Usage Examples
 ```bash
 # NPX (recommended, zero install)
@@ -42,16 +52,6 @@ Default Unity paths assumed:
   - `C:\\Program Files\\Unity\\Hub\\Editor\\<version>\\Editor\\Unity.exe`
 
 
-## Quick Setup
-```bash
-# No install: use npx
-npx launch-unity -h
-
-# Optional: install globally after cloning
-npm i -g .
-```
-
-
 ## Detailed Usage
 ```bash
 # Basic syntax
@@ -85,6 +85,15 @@ quit-unity [PROJECT_PATH] [--timeout <ms>] [--force]
 - macOS, Windows: Supported via Unity Hub default install paths.
 - Linux: Not supported yet. Contributions are welcome.
 
+
+## Security
+
+This project implements supply chain attack prevention measures:
+
+- **ignore-scripts**: Disables automatic script execution during `npm install`
+- **Dependabot**: Automated weekly security updates
+- **Security audit CI**: Runs `npm audit` and `lockfile-lint` on every PR
+- **Pinned versions**: All dependencies use exact versions (no `^` or `~`)
 
 ## License
 - MIT. See `LICENSE` for details.
