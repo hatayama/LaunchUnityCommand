@@ -48,7 +48,7 @@ function parseArgs(argv: string[]): LaunchOptions {
   const unityArgs: string[] = doubleDashIndex >= 0 ? args.slice(doubleDashIndex + 1) : [];
 
   const positionals: string[] = [];
-  let maxDepth: number = 3; // default 3; -1 means unlimited
+  let maxDepth = 3; // default 3; -1 means unlimited
 
   for (let i = 0; i < cliArgs.length; i++) {
     const arg = cliArgs[i] ?? "";
@@ -466,7 +466,7 @@ function hasBuildTargetArg(unityArgs: string[]): boolean {
   return false;
 }
 
-const EXCLUDED_DIR_NAMES: Set<string> = new Set([
+const EXCLUDED_DIR_NAMES = new Set<string>([
   "library",
   "temp",
   "logs",
@@ -498,7 +498,7 @@ function listSubdirectoriesSorted(dir: string): string[] {
       .filter((name) => !EXCLUDED_DIR_NAMES.has(name.toLocaleLowerCase()));
     subdirs.sort((a, b) => a.localeCompare(b));
     entries = subdirs.map((name) => join(dir, name));
-  } catch (_err) {
+  } catch {
     // Ignore directories we cannot read
     entries = [];
   }
@@ -506,15 +506,15 @@ function listSubdirectoriesSorted(dir: string): string[] {
 }
 
 function findUnityProjectBfs(rootDir: string, maxDepth: number): string | undefined {
-  const queue: Array<{ dir: string; depth: number }> = [];
+  const queue: { dir: string; depth: number }[] = [];
   let rootCanonical: string;
   try {
     rootCanonical = realpathSync(rootDir);
-  } catch (_err) {
+  } catch {
     rootCanonical = rootDir;
   }
   queue.push({ dir: rootCanonical, depth: 0 });
-  const visited: Set<string> = new Set([toComparablePath(normalizePath(rootCanonical))]);
+  const visited = new Set<string>([toComparablePath(normalizePath(rootCanonical))]);
 
   while (queue.length > 0) {
     const current = queue.shift();
@@ -540,12 +540,12 @@ function findUnityProjectBfs(rootDir: string, maxDepth: number): string | undefi
         if (stat.isSymbolicLink()) {
           try {
             childCanonical = realpathSync(child);
-          } catch (_e) {
+          } catch {
             // Broken symlink: skip
             continue;
           }
         }
-      } catch (_err) {
+      } catch {
         continue;
       }
 

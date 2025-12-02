@@ -5,6 +5,16 @@ launch-unity
 
 Unity Hubを仲介せず、コマンドラインからUnityを立ち上げます。
 
+## インストール
+
+```bash
+# グローバルインストール
+npm install -g launch-unity
+
+# npxで一時利用（インストール不要）
+npx launch-unity
+```
+
 ## 使用例
 ```bash
 # NPX（推奨 / インストール不要）
@@ -61,6 +71,15 @@ quit-unity [PROJECT_PATH] [--timeout <ms>] [--force]
 # -f, --force         タイムアウト後に強制終了
 # -h, --help          ヘルプ
 ```
+
+## セキュリティ
+
+このプロジェクトはサプライチェーン攻撃対策を実施しています：
+
+- **ignore-scripts**: `npm install` 時の自動スクリプト実行を無効化
+- **Dependabot**: 週次の自動セキュリティアップデート
+- **Security audit CI**: PR ごとに `npm audit` と `lockfile-lint` を実行
+- **バージョン固定**: すべての依存関係で厳密なバージョンを指定（`^` や `~` 不使用）
 
 ## ライセンス
 - MIT。詳細は `LICENSE` を参照してください。
