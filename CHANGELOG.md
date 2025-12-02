@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/hatayama/LaunchUnityCommand/compare/v0.6.1...v0.6.2) (2025-12-02)
+
+
+### Miscellaneous Chores
+
+* trigger release ([6cd982f](https://github.com/hatayama/LaunchUnityCommand/commit/6cd982f62b0344d166ddc2d12131d8454cf896a2))
+
 ## [0.6.1](https://github.com/hatayama/LaunchUnityCommand/compare/v0.6.0...v0.6.1) (2025-12-02)
 
 
