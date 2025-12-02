@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0](https://github.com/hatayama/LaunchUnityCommand/compare/v0.5.0...v0.6.0) (2025-12-02)
+
+
+### Features
+
+* Add supply chain attack prevention measures ([#10](https://github.com/hatayama/LaunchUnityCommand/issues/10)) ([44597b1](https://github.com/hatayama/LaunchUnityCommand/commit/44597b16bbd9fe7512cea059cbbb0447cacc60c8))
+
+
+### Bug Fixes
+
+* add js-yaml override to fix security vulnerability (GHSA-mh29-5h37-fv8m) ([#20](https://github.com/hatayama/LaunchUnityCommand/issues/20)) ([a963014](https://github.com/hatayama/LaunchUnityCommand/commit/a96301439f292e8944d1730ac7dd97fa65fd7cbb))
+
 ## [0.5.0](https://github.com/hatayama/LaunchUnityCommand/compare/v0.4.0...v0.5.0) (2025-11-13)
 
 
