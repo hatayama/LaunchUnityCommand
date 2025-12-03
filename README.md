@@ -15,28 +15,31 @@ npm install -g launch-unity
 npx launch-unity
 ```
 
-## Usage Examples
+## Usage
 ```bash
-# NPX (recommended, zero install)
-npx launch-unity                   # Search up to 3 levels deep for a Unity project and open it
-npx launch-unity /path/to/Proj     # Open a specific project
+# Syntax
+launch-unity [OPTIONS] [PROJECT_PATH] [PLATFORM] [-- UNITY_ARGS...]
+
+# Arguments
+#   PROJECT_PATH    Unity project directory (searches up to 3 levels deep if omitted)
+#   PLATFORM        Passed to Unity as -buildTarget (e.g., StandaloneOSX, Android, iOS)
+
+# Options
+#   -h, --help      Show help
+#   -r, --restart   Kill running Unity and restart
+
+# Examples
+npx launch-unity                   # Search for project and open
+npx launch-unity /path/to/Proj     # Open specific project
 npx launch-unity /path Android     # Specify build target
-npx -y launch-unity                # Skip npx "Ok to proceed?" prompt
-
-# Pass through Unity CLI args with --
-npx launch-unity . -- -batchmode -quit -nographics -logFile -
+npx launch-unity -r                # Restart Unity
+npx launch-unity . -- -batchmode -quit -nographics -logFile -  # Pass Unity args
 npx launch-unity /path Android -- -executeMethod My.Build.Entry
-
-# Installed globally
-launch-unity
-launch-unity /path/to/MyUnityProject Android
-launch-unity . -- -buildTarget iOS -projectPath . # You can override
 ```
 
 A TypeScript CLI for macOS and Windows that reads the required Unity Editor version from
 `ProjectSettings/ProjectVersion.txt`, launches the matching Unity installed via Unity Hub,
-and opens the project. If `Temp/UnityLockfile` exists, it asks in the terminal whether to
-delete it before continuing.
+and opens the project.
 
 Default Unity paths assumed:
 - macOS: `/Applications/Unity/Hub/Editor/<version>/Unity.app/Contents/MacOS/Unity`
@@ -45,20 +48,6 @@ Default Unity paths assumed:
   - `%PROGRAMFILES(X86)%/Unity/Hub/Editor/<version>/Editor/Unity.exe`
   - `%LOCALAPPDATA%/Unity/Hub/Editor/<version>/Editor/Unity.exe`
   - `C:\\Program Files\\Unity\\Hub\\Editor\\<version>\\Editor\\Unity.exe`
-
-
-## Detailed Usage
-```bash
-# Basic syntax
-launch-unity [PROJECT_PATH] [PLATFORM]
-
-# Arguments
-# - PROJECT_PATH (optional): Unity project directory. Defaults to current directory
-# - PLATFORM     (optional): Passed to Unity as -buildTarget (e.g., StandaloneOSX, Android, iOS)
-
-# Flags
-# -h, --help  Show help
-```
 
 
 ## Troubleshooting
