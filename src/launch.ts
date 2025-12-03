@@ -17,6 +17,7 @@ type LaunchOptions = {
   platform?: string | undefined;
   unityArgs: string[];
   searchMaxDepth: number; // -1 for unlimited; default 3
+  restart: boolean;
 };
 
 type LaunchResolvedOptions = {
@@ -49,12 +50,17 @@ function parseArgs(argv: string[]): LaunchOptions {
 
   const positionals: string[] = [];
   let maxDepth = 3; // default 3; -1 means unlimited
+  let restart = false;
 
   for (let i = 0; i < cliArgs.length; i++) {
     const arg = cliArgs[i] ?? "";
     if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
+    }
+    if (arg === "-r" || arg === "--restart") {
+      restart = true;
+      continue;
     }
     if (arg.startsWith("--max-depth")) {
       const parts = arg.split("=");
@@ -104,7 +110,7 @@ function parseArgs(argv: string[]): LaunchOptions {
     platform = String(positionals[1] ?? "");
   }
 
-  const options: LaunchOptions = { unityArgs, searchMaxDepth: maxDepth };
+  const options: LaunchOptions = { unityArgs, searchMaxDepth: maxDepth, restart };
   if (projectPath !== undefined) {
     options.projectPath = projectPath;
   }
@@ -130,6 +136,7 @@ Forwarding:
 
 Flags:
   -h, --help          Show this help message
+  -r, --restart       Kill running Unity and restart
   --max-depth <N>     Search depth when PROJECT_PATH is omitted (default 3, -1 unlimited)
 `;
   process.stdout.write(help);
@@ -454,6 +461,57 @@ async function handleStaleLockfile(projectPath: string): Promise<void> {
   }
 }
 
+const KILL_POLL_INTERVAL_MS = 100;
+const KILL_TIMEOUT_MS = 10000;
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function killProcess(pid: number): void {
+  try {
+    process.kill(pid, "SIGKILL");
+  } catch {
+    // Process already exited
+  }
+}
+
+async function waitForProcessExit(pid: number): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < KILL_TIMEOUT_MS) {
+    if (!isProcessAlive(pid)) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, KILL_POLL_INTERVAL_MS));
+  }
+  return false;
+}
+
+async function killRunningUnity(projectPath: string): Promise<void> {
+  const processInfo = await findRunningUnityProcess(projectPath);
+  if (!processInfo) {
+    console.log("No running Unity process found for this project.");
+    return;
+  }
+
+  const pid = processInfo.pid;
+  console.log(`Killing Unity (PID: ${pid})...`);
+  killProcess(pid);
+
+  const exited = await waitForProcessExit(pid);
+  if (!exited) {
+    console.error(`Error: Failed to kill Unity (PID: ${pid}) within ${KILL_TIMEOUT_MS / 1000}s.`);
+    process.exit(1);
+  }
+
+  console.log("Unity killed.");
+}
+
 function hasBuildTargetArg(unityArgs: string[]): boolean {
   for (const arg of unityArgs) {
     if (arg === "-buildTarget") {
@@ -611,14 +669,18 @@ async function main(): Promise<void> {
 
   ensureProjectPath(resolvedProjectPath);
 
-  const runningProcess = await findRunningUnityProcess(resolvedProjectPath);
-  if (runningProcess) {
-    console.log(
-      `Unity process already running for project: ${resolvedProjectPath} (PID: ${runningProcess.pid})`,
-    );
-    await focusUnityProcess(runningProcess.pid);
-    process.exit(0);
-    return;
+  if (options.restart) {
+    await killRunningUnity(resolvedProjectPath);
+  } else {
+    const runningProcess = await findRunningUnityProcess(resolvedProjectPath);
+    if (runningProcess) {
+      console.log(
+        `Unity process already running for project: ${resolvedProjectPath} (PID: ${runningProcess.pid})`,
+      );
+      await focusUnityProcess(runningProcess.pid);
+      process.exit(0);
+      return;
+    }
   }
 
   await handleStaleLockfile(resolvedProjectPath);
