@@ -15,27 +15,30 @@ npm install -g launch-unity
 npx launch-unity
 ```
 
-## 使用例
+## 使い方
 ```bash
-# NPX（推奨 / インストール不要）
-npx launch-unity                    # カレントディレクトリから3階層下までUnityプロジェクトを探索して開く
-npx launch-unity /path/to/Proj      # プロジェクトを指定
-npx launch-unity /path Android      # ビルドターゲットを指定
-npx -y launch-unity                 # npx の「Ok to proceed?」確認をスキップ
+# 構文
+launch-unity [OPTIONS] [PROJECT_PATH] [PLATFORM] [-- UNITY_ARGS...]
 
-# `--` 以降は Unity のコマンドライン引数をそのまま転送
-npx launch-unity . -- -batchmode -quit -nographics -logFile -
+# 引数
+#   PROJECT_PATH    Unityプロジェクトのディレクトリ（省略時は3階層下まで探索）
+#   PLATFORM        Unityの -buildTarget に渡す値（例: StandaloneOSX, Android, iOS）
+
+# オプション
+#   -h, --help      ヘルプを表示
+#   -r, --restart   Unityを再起動
+
+# 例
+npx launch-unity                   # プロジェクトを探索して開く
+npx launch-unity /path/to/Proj     # 指定プロジェクトを開く
+npx launch-unity /path Android     # ビルドターゲットを指定
+npx launch-unity -r                # Unityを再起動
+npx launch-unity . -- -batchmode -quit -nographics -logFile -  # Unity引数を渡す
 npx launch-unity /path Android -- -executeMethod My.Build.Entry
-
-# グローバルインストール後
-launch-unity
-launch-unity /path/to/MyUnityProject Android
-launch-unity . -- -buildTarget iOS -projectPath . # 上書きも可能
 ```
 
 指定した Unity プロジェクトの `ProjectSettings/ProjectVersion.txt` から必要な Unity Editor のバージョンを読み取り、
-Unity Hub でインストール済みの該当バージョンを起動する macOS/Windows 向け TypeScript 製 CLI です。`Temp/UnityLockfile` が
-存在する場合は、削除して続行するかをターミナル上で確認します。
+Unity Hub でインストール済みの該当バージョンを起動する macOS/Windows 向け TypeScript 製 CLI です。
 
 既定で想定する Unity のパス:
 - macOS: `/Applications/Unity/Hub/Editor/<version>/Unity.app/Contents/MacOS/Unity`
