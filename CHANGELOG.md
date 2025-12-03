@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/hatayama/LaunchUnityCommand/compare/v0.6.2...v0.7.0) (2025-12-03)
+
+
+### Features
+
+* add -r/--restart option to kill and restart Unity ([#25](https://github.com/hatayama/LaunchUnityCommand/issues/25)) ([499820b](https://github.com/hatayama/LaunchUnityCommand/commit/499820b22d82e4c38601377cd182cea109a669a8))
+
 ## [0.6.2](https://github.com/hatayama/LaunchUnityCommand/compare/v0.6.1...v0.6.2) (2025-12-02)
 
 
