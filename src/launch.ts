@@ -461,12 +461,35 @@ async function handleStaleLockfile(projectPath: string): Promise<void> {
   }
 }
 
+const KILL_POLL_INTERVAL_MS = 100;
+const KILL_TIMEOUT_MS = 10000;
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function killProcess(pid: number): void {
   try {
     process.kill(pid, "SIGKILL");
   } catch {
     // Process already exited
   }
+}
+
+async function waitForProcessExit(pid: number): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < KILL_TIMEOUT_MS) {
+    if (!isProcessAlive(pid)) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, KILL_POLL_INTERVAL_MS));
+  }
+  return false;
 }
 
 async function killRunningUnity(projectPath: string): Promise<void> {
@@ -479,6 +502,13 @@ async function killRunningUnity(projectPath: string): Promise<void> {
   const pid = processInfo.pid;
   console.log(`Killing Unity (PID: ${pid})...`);
   killProcess(pid);
+
+  const exited = await waitForProcessExit(pid);
+  if (!exited) {
+    console.error(`Error: Failed to kill Unity (PID: ${pid}) within ${KILL_TIMEOUT_MS / 1000}s.`);
+    process.exit(1);
+  }
+
   console.log("Unity killed.");
 }
 
