@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/hatayama/LaunchUnityCommand/compare/v0.7.0...v0.8.0) (2025-12-06)
+
+
+### Features
+
+* add -a and -f flags for Unity Hub registration without launching Unity ([#32](https://github.com/hatayama/LaunchUnityCommand/issues/32)) ([75b4922](https://github.com/hatayama/LaunchUnityCommand/commit/75b4922a3e103e393c466633911322a19690c0df))
+
 ## [0.7.0](https://github.com/hatayama/LaunchUnityCommand/compare/v0.6.2...v0.7.0) (2025-12-03)
 
 
