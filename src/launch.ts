@@ -10,7 +10,7 @@ import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
-import { updateLastModifiedIfExists } from "./unityHub.js";
+import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists } from "./unityHub.js";
 
 type LaunchOptions = {
   projectPath?: string;
@@ -18,12 +18,15 @@ type LaunchOptions = {
   unityArgs: string[];
   searchMaxDepth: number; // -1 for unlimited; default 3
   restart: boolean;
+  addUnityHub: boolean;
+  favoriteUnityHub: boolean;
 };
 
 type LaunchResolvedOptions = {
   projectPath: string;
   platform?: string | undefined;
   unityArgs: string[];
+  unityVersion: string;
 };
 
 type UnityProcessInfo = {
@@ -51,6 +54,8 @@ function parseArgs(argv: string[]): LaunchOptions {
   const positionals: string[] = [];
   let maxDepth = 3; // default 3; -1 means unlimited
   let restart = false;
+  let addUnityHub = false;
+  let favoriteUnityHub = false;
 
   for (let i = 0; i < cliArgs.length; i++) {
     const arg = cliArgs[i] ?? "";
@@ -60,6 +65,19 @@ function parseArgs(argv: string[]): LaunchOptions {
     }
     if (arg === "-r" || arg === "--restart") {
       restart = true;
+      continue;
+    }
+    if (
+      arg === "-u" ||
+      arg === "-a" ||
+      arg === "--unity-hub-entry" ||
+      arg === "--add-unity-hub"
+    ) {
+      addUnityHub = true;
+      continue;
+    }
+    if (arg === "-f" || arg === "--favorite") {
+      favoriteUnityHub = true;
       continue;
     }
     if (arg.startsWith("--max-depth")) {
@@ -110,7 +128,7 @@ function parseArgs(argv: string[]): LaunchOptions {
     platform = String(positionals[1] ?? "");
   }
 
-  const options: LaunchOptions = { unityArgs, searchMaxDepth: maxDepth, restart };
+  const options: LaunchOptions = { unityArgs, searchMaxDepth: maxDepth, restart, addUnityHub, favoriteUnityHub };
   if (projectPath !== undefined) {
     options.projectPath = projectPath;
   }
@@ -138,6 +156,9 @@ Flags:
   -h, --help          Show this help message
   -r, --restart       Kill running Unity and restart
   --max-depth <N>     Search depth when PROJECT_PATH is omitted (default 3, -1 unlimited)
+  -u, -a, --unity-hub-entry, --add-unity-hub
+                      Add to Unity Hub if missing and update lastModified (does not launch Unity)
+  -f, --favorite      Add to Unity Hub as favorite (does not launch Unity)
 `;
   process.stdout.write(help);
 }
@@ -619,8 +640,7 @@ function findUnityProjectBfs(rootDir: string, maxDepth: number): string | undefi
 }
 
 function launch(opts: LaunchResolvedOptions): void {
-  const { projectPath, platform, unityArgs } = opts;
-  const unityVersion: string = getUnityVersion(projectPath);
+  const { projectPath, platform, unityArgs, unityVersion } = opts;
   const unityPath: string = getUnityPath(unityVersion);
 
   console.log(`Detected Unity version: ${unityVersion}`);
@@ -668,6 +688,23 @@ async function main(): Promise<void> {
   }
 
   ensureProjectPath(resolvedProjectPath);
+  const unityVersion = getUnityVersion(resolvedProjectPath);
+
+  // Unity Hub only mode: -a or -f flags skip launching Unity
+  const unityHubOnlyMode = options.addUnityHub || options.favoriteUnityHub;
+  if (unityHubOnlyMode) {
+    console.log(`Detected Unity version: ${unityVersion}`);
+    console.log(`Project Path: ${resolvedProjectPath}`);
+    const now = new Date();
+    try {
+      await ensureProjectEntryAndUpdate(resolvedProjectPath, unityVersion, now, options.favoriteUnityHub);
+      console.log("Unity Hub entry updated.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`Failed to update Unity Hub: ${message}`);
+    }
+    return;
+  }
 
   if (options.restart) {
     await killRunningUnity(resolvedProjectPath);
@@ -688,11 +725,13 @@ async function main(): Promise<void> {
     projectPath: resolvedProjectPath,
     platform: options.platform,
     unityArgs: options.unityArgs,
+    unityVersion,
   };
   launch(resolved);
   // Best-effort update of Unity Hub's lastModified timestamp.
+  const now = new Date();
   try {
-    await updateLastModifiedIfExists(resolvedProjectPath, new Date());
+    await updateLastModifiedIfExists(resolvedProjectPath, now);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(`Failed to update Unity Hub lastModified: ${message}`);

@@ -27,12 +27,17 @@ launch-unity [OPTIONS] [PROJECT_PATH] [PLATFORM] [-- UNITY_ARGS...]
 # オプション
 #   -h, --help      ヘルプを表示
 #   -r, --restart   Unityを再起動
+#   -a, -u, --add-unity-hub, --unity-hub-entry
+#                   Unity Hub に登録（Unityは起動しない）
+#   -f, --favorite  Unity Hub にお気に入りとして登録（Unityは起動しない）
 
 # 例
 npx launch-unity                   # プロジェクトを探索して開く
 npx launch-unity /path/to/Proj     # 指定プロジェクトを開く
 npx launch-unity /path Android     # ビルドターゲットを指定
 npx launch-unity -r                # Unityを再起動
+npx launch-unity -a                # Unity Hub に登録のみ（Unityは起動しない）
+npx launch-unity -f                # Unity Hub にお気に入り登録（Unityは起動しない）
 npx launch-unity . -- -batchmode -quit -nographics -logFile -  # Unity引数を渡す
 npx launch-unity /path Android -- -executeMethod My.Build.Entry
 ```
