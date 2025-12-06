@@ -1,9 +1,11 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { realpathSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 
 type UnityHubProjectEntry = {
   readonly title?: string | null;
   readonly path: string;
+  readonly containingFolderPath?: string | null;
   readonly version: string;
   readonly lastModified?: number | null;
   readonly isFavorite?: boolean | null;
@@ -47,12 +49,105 @@ const normalizePath = (target: string): string => {
   return removeTrailingSeparators(resolvedPath);
 };
 
+const resolvePathWithActualCase = (target: string): string => {
+  try {
+    return removeTrailingSeparators(realpathSync.native(target));
+  } catch {
+    return normalizePath(target);
+  }
+};
+
 const toComparablePath = (value: string): string => {
   return value.replace(/\\/g, "/").toLocaleLowerCase();
 };
 
 const pathsEqual = (left: string, right: string): boolean => {
   return toComparablePath(normalizePath(left)) === toComparablePath(normalizePath(right));
+};
+
+const safeParseProjectsJson = (content: string): UnityHubProjectsJson | undefined => {
+  try {
+    return JSON.parse(content) as UnityHubProjectsJson;
+  } catch {
+    return undefined;
+  }
+};
+
+const logDebug = (message: string): void => {
+  if (process.env["LAUNCH_UNITY_DEBUG"] === "1") {
+    console.log(`[unityHub] ${message}`);
+  }
+};
+
+export const ensureProjectEntryAndUpdate = async (
+  projectPath: string,
+  version: string,
+  when: Date,
+  setFavorite = false,
+): Promise<void> => {
+  const canonicalProjectPath = resolvePathWithActualCase(projectPath);
+  const projectTitle = basename(canonicalProjectPath);
+  const containingFolderPath = dirname(canonicalProjectPath);
+  const candidates: string[] = resolveUnityHubProjectFiles();
+  if (candidates.length === 0) {
+    logDebug("No Unity Hub project files found.");
+    return;
+  }
+
+  for (const path of candidates) {
+    logDebug(`Trying Unity Hub file: ${path}`);
+    const content = await readFile(path, "utf8").catch(() => undefined);
+    if (!content) {
+      logDebug("Read failed or empty content, skipping.");
+      continue;
+    }
+
+    const json = safeParseProjectsJson(content);
+    if (!json) {
+      logDebug("Parse failed, skipping.");
+      continue;
+    }
+
+    const data: Record<string, UnityHubProjectEntry> = { ...(json.data ?? {}) };
+    const existingKey: string | undefined = Object.keys(data).find((key) => {
+      const entryPath = data[key]?.path;
+      return entryPath ? pathsEqual(entryPath, projectPath) : false;
+    });
+
+    const targetKey = existingKey ?? canonicalProjectPath;
+    const existingEntry = existingKey ? data[existingKey] : undefined;
+    logDebug(
+      existingKey
+        ? `Found existing entry for project (key=${existingKey}). Updating lastModified.`
+        : `No existing entry. Adding new entry (key=${targetKey}).`,
+    );
+    const updatedEntry: UnityHubProjectEntry = {
+      ...existingEntry,
+      path: existingEntry?.path ?? canonicalProjectPath,
+      containingFolderPath: existingEntry?.containingFolderPath ?? containingFolderPath,
+      version: existingEntry?.version ?? version,
+      title: existingEntry?.title ?? projectTitle,
+      lastModified: when.getTime(),
+      isFavorite: setFavorite ? true : (existingEntry?.isFavorite ?? false),
+    };
+
+    const updatedJson: UnityHubProjectsJson = {
+      ...json,
+      data: {
+        ...data,
+        [targetKey]: updatedEntry,
+      },
+    };
+
+    try {
+      await writeFile(path, JSON.stringify(updatedJson, undefined, 2), "utf8");
+      logDebug("Write succeeded.");
+    } catch (error) {
+      logDebug(`Write failed: ${error instanceof Error ? error.message : String(error)}`);
+      // Ignore write errors to avoid breaking CLI flow
+    }
+    return;
+  }
 };
 
 export const updateLastModifiedIfExists = async (

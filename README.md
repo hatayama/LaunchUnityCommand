@@ -27,12 +27,17 @@ launch-unity [OPTIONS] [PROJECT_PATH] [PLATFORM] [-- UNITY_ARGS...]
 # Options
 #   -h, --help      Show help
 #   -r, --restart   Kill running Unity and restart
+#   -a, -u, --add-unity-hub, --unity-hub-entry
+#                   Register to Unity Hub (does not launch Unity)
+#   -f, --favorite  Register to Unity Hub as favorite (does not launch Unity)
 
 # Examples
 npx launch-unity                   # Search for project and open
 npx launch-unity /path/to/Proj     # Open specific project
 npx launch-unity /path Android     # Specify build target
 npx launch-unity -r                # Restart Unity
+npx launch-unity -a                # Register to Unity Hub only (does not launch Unity)
+npx launch-unity -f                # Register as favorite (does not launch Unity)
 npx launch-unity . -- -batchmode -quit -nographics -logFile -  # Pass Unity args
 npx launch-unity /path Android -- -executeMethod My.Build.Entry
 ```
