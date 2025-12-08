@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/hatayama/LaunchUnityCommand/compare/v0.8.0...v0.9.0) (2025-12-08)
+
+
+### Features
+
+* add -v/--version option to display version number ([#35](https://github.com/hatayama/LaunchUnityCommand/issues/35)) ([8a0be4c](https://github.com/hatayama/LaunchUnityCommand/commit/8a0be4c4856114a32bf9c12a05f81287c30b82d5))
+
 ## [0.8.0](https://github.com/hatayama/LaunchUnityCommand/compare/v0.7.0...v0.8.0) (2025-12-06)
 
 
