@@ -7,7 +7,8 @@
 import { execFile, spawn } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, lstatSync, realpathSync } from "node:fs";
 import { rm } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists } from "./unityHub.js";
@@ -61,6 +62,10 @@ function parseArgs(argv: string[]): LaunchOptions {
     const arg = cliArgs[i] ?? "";
     if (arg === "--help" || arg === "-h") {
       printHelp();
+      process.exit(0);
+    }
+    if (arg === "--version" || arg === "-v") {
+      console.log(getVersion());
       process.exit(0);
     }
     if (arg === "-r" || arg === "--restart") {
@@ -138,6 +143,14 @@ function parseArgs(argv: string[]): LaunchOptions {
   return options;
 }
 
+function getVersion(): string {
+  const currentFilePath: string = fileURLToPath(import.meta.url);
+  const currentDir: string = dirname(currentFilePath);
+  const packageJsonPath: string = join(currentDir, "..", "package.json");
+  const packageJson: { version: string } = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+  return packageJson.version;
+}
+
 function printHelp(): void {
   const help = `
 Usage: launch-unity [PROJECT_PATH] [PLATFORM] -- [UNITY_ARGS...]
@@ -154,6 +167,7 @@ Forwarding:
 
 Flags:
   -h, --help          Show this help message
+  -v, --version       Show version number
   -r, --restart       Kill running Unity and restart
   --max-depth <N>     Search depth when PROJECT_PATH is omitted (default 3, -1 unlimited)
   -u, -a, --unity-hub-entry, --add-unity-hub
