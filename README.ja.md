@@ -19,6 +19,7 @@ npx launch-unity
 ```bash
 # 構文
 launch-unity [OPTIONS] [PROJECT_PATH] [PLATFORM] [-- UNITY_ARGS...]
+launch-unity update
 
 # 引数
 #   PROJECT_PATH    Unityプロジェクトのディレクトリ（省略時は3階層下まで探索）
@@ -40,6 +41,9 @@ npx launch-unity -a                # Unity Hub に登録のみ（Unityは起動�
 npx launch-unity -f                # Unity Hub にお気に入り登録（Unityは起動しない）
 npx launch-unity . -- -batchmode -quit -nographics -logFile -  # Unity引数を渡す
 npx launch-unity /path Android -- -executeMethod My.Build.Entry
+
+# 自己更新（npmグローバルインストール向け）
+launch-unity update
 ```
 
 指定した Unity プロジェクトの `ProjectSettings/ProjectVersion.txt` から必要な Unity Editor のバージョンを読み取り、

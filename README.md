@@ -19,6 +19,7 @@ npx launch-unity
 ```bash
 # Syntax
 launch-unity [OPTIONS] [PROJECT_PATH] [PLATFORM] [-- UNITY_ARGS...]
+launch-unity update
 
 # Arguments
 #   PROJECT_PATH    Unity project directory (searches up to 3 levels deep if omitted)
@@ -40,6 +41,9 @@ npx launch-unity -a                # Register to Unity Hub only (does not launch
 npx launch-unity -f                # Register as favorite (does not launch Unity)
 npx launch-unity . -- -batchmode -quit -nographics -logFile -  # Pass Unity args
 npx launch-unity /path Android -- -executeMethod My.Build.Entry
+
+# Self update (for npm global install)
+launch-unity update
 ```
 
 A TypeScript CLI for macOS and Windows that reads the required Unity Editor version from
