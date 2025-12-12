@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.0](https://github.com/hatayama/LaunchUnityCommand/compare/v0.9.0...v0.10.0) (2025-12-12)
+
+
+### Features
+
+* add launch-unity update (self-update) ([#37](https://github.com/hatayama/LaunchUnityCommand/issues/37)) ([b4ecca1](https://github.com/hatayama/LaunchUnityCommand/commit/b4ecca1c8e97d9bc643bcda15d361bf8329ebea6))
+
+
+### Bug Fixes
+
+* update npm publish command to include provenance flag in workflow ([#38](https://github.com/hatayama/LaunchUnityCommand/issues/38)) ([9914fca](https://github.com/hatayama/LaunchUnityCommand/commit/9914fca2e6f84bbfc1945e4ffe4c3d376427b036))
+
 ## [0.9.0](https://github.com/hatayama/LaunchUnityCommand/compare/v0.8.0...v0.9.0) (2025-12-08)
 
 
