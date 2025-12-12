@@ -318,7 +318,7 @@ Usage:
 Open a Unity project with the matching Unity Editor version installed by Unity Hub.
 
 Arguments:
-  PROJECT_PATH  Optional. Defaults to current directory
+  PROJECT_PATH  Optional. If omitted, searches under the current directory (see --max-depth)
   PLATFORM      Optional. Passed to Unity as -buildTarget (e.g., StandaloneOSX, Android, iOS)
 
 Forwarding:

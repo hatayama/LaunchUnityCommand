@@ -44,6 +44,9 @@ npx launch-unity /path Android -- -executeMethod My.Build.Entry
 
 # 自己更新（npmグローバルインストール向け）
 launch-unity update
+
+# `update` という名前のディレクトリを開きたい場合は明示する
+launch-unity ./update
 ```
 
 指定した Unity プロジェクトの `ProjectSettings/ProjectVersion.txt` から必要な Unity Editor のバージョンを読み取り、

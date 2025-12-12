@@ -44,6 +44,9 @@ npx launch-unity /path Android -- -executeMethod My.Build.Entry
 
 # Self update (for npm global install)
 launch-unity update
+
+# If you have a project directory named "update", specify it explicitly
+launch-unity ./update
 ```
 
 A TypeScript CLI for macOS and Windows that reads the required Unity Editor version from
