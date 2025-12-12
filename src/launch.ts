@@ -82,11 +82,13 @@ type SemverTriplet = {
   major: number;
   minor: number;
   patch: number;
+  prereleaseIdentifiers?: (number | string)[];
 };
 
 const parseSemverTriplet = (value: string): SemverTriplet | undefined => {
   const normalized = value.trim();
-  const match = normalized.match(/^v?(\d+)\.(\d+)\.(\d+)/);
+  const withoutBuild = normalized.split("+")[0] ?? normalized;
+  const match = withoutBuild.match(/^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/);
   if (!match) {
     return undefined;
   }
@@ -96,7 +98,32 @@ const parseSemverTriplet = (value: string): SemverTriplet | undefined => {
   if (!Number.isFinite(major) || !Number.isFinite(minor) || !Number.isFinite(patch)) {
     return undefined;
   }
-  return { major, minor, patch };
+
+  const prereleaseRaw: string | undefined = match[4] ?? undefined;
+  if (!prereleaseRaw) {
+    return { major, minor, patch };
+  }
+
+  const prereleaseIdentifiers: (number | string)[] = prereleaseRaw
+    .split(".")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+    .map((part) => {
+      const numeric = part.match(/^\d+$/);
+      if (numeric) {
+        const value = Number.parseInt(part, 10);
+        if (Number.isFinite(value)) {
+          return value;
+        }
+      }
+      return part;
+    });
+
+  if (prereleaseIdentifiers.length === 0) {
+    return { major, minor, patch };
+  }
+
+  return { major, minor, patch, prereleaseIdentifiers };
 };
 
 const compareSemverTriplet = (left: SemverTriplet, right: SemverTriplet): number => {
@@ -109,6 +136,54 @@ const compareSemverTriplet = (left: SemverTriplet, right: SemverTriplet): number
   if (left.patch !== right.patch) {
     return left.patch < right.patch ? -1 : 1;
   }
+
+  const leftPre = left.prereleaseIdentifiers;
+  const rightPre = right.prereleaseIdentifiers;
+
+  if (!leftPre && !rightPre) {
+    return 0;
+  }
+  if (!leftPre && rightPre) {
+    return 1;
+  }
+  if (leftPre && !rightPre) {
+    return -1;
+  }
+
+  const leftIdentifiers = leftPre ?? [];
+  const rightIdentifiers = rightPre ?? [];
+  const length = Math.max(leftIdentifiers.length, rightIdentifiers.length);
+
+  for (let i = 0; i < length; i++) {
+    const leftId = leftIdentifiers[i];
+    const rightId = rightIdentifiers[i];
+    if (leftId === undefined && rightId === undefined) {
+      return 0;
+    }
+    if (leftId === undefined) {
+      return -1;
+    }
+    if (rightId === undefined) {
+      return 1;
+    }
+    if (leftId === rightId) {
+      continue;
+    }
+
+    const leftIsNumber = typeof leftId === "number";
+    const rightIsNumber = typeof rightId === "number";
+    if (leftIsNumber && rightIsNumber) {
+      return leftId < rightId ? -1 : 1;
+    }
+    if (leftIsNumber !== rightIsNumber) {
+      return leftIsNumber ? -1 : 1;
+    }
+
+    const leftText = String(leftId);
+    const rightText = String(rightId);
+    return leftText < rightText ? -1 : 1;
+  }
+
   return 0;
 };
 
