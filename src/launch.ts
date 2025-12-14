@@ -736,12 +736,7 @@ const EXCLUDED_DIR_NAMES = new Set<string>([
 
 function isUnityProjectRoot(candidateDir: string): boolean {
   const versionFile: string = join(candidateDir, "ProjectSettings", "ProjectVersion.txt");
-  const hasVersion: boolean = existsSync(versionFile);
-  if (!hasVersion) {
-    return false;
-  }
-  const libraryDir: string = join(candidateDir, "Library");
-  return existsSync(libraryDir);
+  return existsSync(versionFile);
 }
 
 function listSubdirectoriesSorted(dir: string): string[] {
