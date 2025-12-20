@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.10.0...launch-unity-v0.10.1) (2025-12-20)
+
+
+### Bug Fixes
+
+* restore version to 0.10.0 after release-please misconfiguration ([#49](https://github.com/hatayama/LaunchUnityCommand/issues/49)) ([3089b18](https://github.com/hatayama/LaunchUnityCommand/commit/3089b18067667525085600baf94453e12af5bb1a))
+
 ## [0.6.2](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.10.0...launch-unity-v0.6.2) (2025-12-18)
 
 
