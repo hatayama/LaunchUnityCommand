@@ -280,6 +280,11 @@ function parseArgs(argv: string[]): LaunchOptions {
   if (positionals.length > 0) {
     projectPath = resolve(positionals[0] ?? "");
   }
+  if (positionals.length > 1) {
+    const ignored: string = positionals.slice(1).join(", ");
+    console.warn(`Warning: Extra arguments ignored: ${ignored}`);
+    console.warn("  Use -p option for platform: launch-unity -p <platform>");
+  }
 
   const options: LaunchOptions = {
     unityArgs,
