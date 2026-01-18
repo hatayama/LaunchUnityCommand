@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.11.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.10.1...launch-unity-v0.11.0) (2026-01-18)
+
+
+### Features
+
+* add -p, --platform option for build target specification ([#65](https://github.com/hatayama/LaunchUnityCommand/issues/65)) ([bcbaa20](https://github.com/hatayama/LaunchUnityCommand/commit/bcbaa20cdfa2e55e08f9231d6f734aa980941751))
+
+
+### Bug Fixes
+
+* **deps:** sync @typescript-eslint/eslint-plugin to 8.52.0 ([#63](https://github.com/hatayama/LaunchUnityCommand/issues/63)) ([3bb6499](https://github.com/hatayama/LaunchUnityCommand/commit/3bb64993be341fa64e41e3740588c6f5cd541be4))
+
 ## [0.10.1](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.10.0...launch-unity-v0.10.1) (2025-12-20)
 
 
