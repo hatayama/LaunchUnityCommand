@@ -18,29 +18,30 @@ npx launch-unity
 ## Usage
 ```bash
 # Syntax
-launch-unity [OPTIONS] [PROJECT_PATH] [PLATFORM] [-- UNITY_ARGS...]
+launch-unity [OPTIONS] [PROJECT_PATH] [-- UNITY_ARGS...]
 launch-unity update
 
 # Arguments
-#   PROJECT_PATH    Unity project directory (searches up to 3 levels deep if omitted)
-#   PLATFORM        Passed to Unity as -buildTarget (e.g., StandaloneOSX, Android, iOS)
+#   PROJECT_PATH       Unity project directory (searches up to 3 levels deep if omitted)
 
 # Options
-#   -h, --help      Show help
-#   -r, --restart   Kill running Unity and restart
+#   -h, --help         Show help
+#   -r, --restart      Kill running Unity and restart
+#   -p, --platform <P> Passed to Unity as -buildTarget (e.g., StandaloneOSX, Android, iOS)
 #   -a, -u, --add-unity-hub, --unity-hub-entry
-#                   Register to Unity Hub (does not launch Unity)
-#   -f, --favorite  Register to Unity Hub as favorite (does not launch Unity)
+#                      Register to Unity Hub (does not launch Unity)
+#   -f, --favorite     Register to Unity Hub as favorite (does not launch Unity)
 
 # Examples
-npx launch-unity                   # Search for project and open
-npx launch-unity /path/to/Proj     # Open specific project
-npx launch-unity /path Android     # Specify build target
-npx launch-unity -r                # Restart Unity
-npx launch-unity -a                # Register to Unity Hub only (does not launch Unity)
-npx launch-unity -f                # Register as favorite (does not launch Unity)
+npx launch-unity                       # Search for project and open
+npx launch-unity /path/to/Proj         # Open specific project
+npx launch-unity -p Android            # Specify build target
+npx launch-unity /path -p Android      # Specify path and build target
+npx launch-unity -r                    # Restart Unity
+npx launch-unity -a                    # Register to Unity Hub only (does not launch Unity)
+npx launch-unity -f                    # Register as favorite (does not launch Unity)
 npx launch-unity . -- -batchmode -quit -nographics -logFile -  # Pass Unity args
-npx launch-unity /path Android -- -executeMethod My.Build.Entry
+npx launch-unity /path -p Android -- -executeMethod My.Build.Entry
 
 # Self update (for npm global install)
 launch-unity update
