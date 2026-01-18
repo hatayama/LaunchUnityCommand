@@ -206,6 +206,7 @@ function parseArgs(argv: string[]): LaunchOptions {
   let restart = false;
   let addUnityHub = false;
   let favoriteUnityHub = false;
+  let platform: string | undefined;
 
   for (let i = 0; i < cliArgs.length; i++) {
     const arg = cliArgs[i] ?? "";
@@ -234,6 +235,21 @@ function parseArgs(argv: string[]): LaunchOptions {
       favoriteUnityHub = true;
       continue;
     }
+    if (arg === "-p" || arg === "--platform") {
+      const next = cliArgs[i + 1];
+      if (typeof next === "string" && !next.startsWith("-")) {
+        platform = next;
+        i += 1;
+      }
+      continue;
+    }
+    if (arg.startsWith("--platform=")) {
+      const value = arg.slice("--platform=".length);
+      if (value.length > 0) {
+        platform = value;
+      }
+      continue;
+    }
     if (arg.startsWith("--max-depth")) {
       const parts = arg.split("=");
       if (parts.length === 2) {
@@ -255,31 +271,20 @@ function parseArgs(argv: string[]): LaunchOptions {
       continue;
     }
     if (arg.startsWith("-")) {
+      console.warn(`Warning: Unknown option ignored: ${arg}`);
       continue;
     }
     positionals.push(arg);
   }
 
   let projectPath: string | undefined;
-  let platform: string | undefined;
-
-  if (positionals.length === 0) {
-    projectPath = undefined; // trigger search
-    platform = undefined;
-  } else if (positionals.length === 1) {
-    const first = positionals[0] ?? "";
-    const resolvedFirst = resolve(first);
-    if (existsSync(resolvedFirst)) {
-      projectPath = resolvedFirst;
-      platform = undefined;
-    } else {
-      // Treat as platform when path does not exist
-      projectPath = undefined; // trigger search
-      platform = String(first);
-    }
-  } else {
+  if (positionals.length > 0) {
     projectPath = resolve(positionals[0] ?? "");
-    platform = String(positionals[1] ?? "");
+  }
+  if (positionals.length > 1) {
+    const ignored: string = positionals.slice(1).join(", ");
+    console.warn(`Warning: Extra arguments ignored: ${ignored}`);
+    console.warn("  Use -p option for platform: launch-unity -p <platform>");
   }
 
   const options: LaunchOptions = {
@@ -312,23 +317,23 @@ function getVersion(): string {
 function printHelp(): void {
   const help = `
 Usage:
-  launch-unity [PROJECT_PATH] [PLATFORM] -- [UNITY_ARGS...]
+  launch-unity [OPTIONS] [PROJECT_PATH] [-- UNITY_ARGS...]
   launch-unity update
 
 Open a Unity project with the matching Unity Editor version installed by Unity Hub.
 
 Arguments:
   PROJECT_PATH  Optional. If omitted, searches under the current directory (see --max-depth)
-  PLATFORM      Optional. Passed to Unity as -buildTarget (e.g., StandaloneOSX, Android, iOS)
 
 Forwarding:
   Everything after -- is forwarded to Unity unchanged.
-  If UNITY_ARGS includes -buildTarget, the PLATFORM argument is ignored.
+  If UNITY_ARGS includes -buildTarget, the -p option is ignored.
 
-Flags:
+Options:
   -h, --help          Show this help message
   -v, --version       Show version number
   -r, --restart       Kill running Unity and restart
+  -p, --platform <P>  Passed to Unity as -buildTarget (e.g., StandaloneOSX, Android, iOS)
   --max-depth <N>     Search depth when PROJECT_PATH is omitted (default 3, -1 unlimited)
   -u, -a, --unity-hub-entry, --add-unity-hub
                       Add to Unity Hub if missing and update lastModified (does not launch Unity)
