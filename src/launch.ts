@@ -271,6 +271,7 @@ function parseArgs(argv: string[]): LaunchOptions {
       continue;
     }
     if (arg.startsWith("-")) {
+      console.warn(`Warning: Unknown option ignored: ${arg}`);
       continue;
     }
     positionals.push(arg);
