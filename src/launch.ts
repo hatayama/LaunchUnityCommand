@@ -983,9 +983,15 @@ async function runSelfUpdate(): Promise<void> {
 }
 
 // Only run main() when this file is executed directly (not when imported as a library)
-const isDirectExecution =
-  typeof process.argv[1] === "string" &&
-  import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
+let isDirectExecution = false;
+if (typeof process.argv[1] === "string") {
+  try {
+    isDirectExecution =
+      import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
+  } catch {
+    isDirectExecution = false;
+  }
+}
 if (isDirectExecution) {
   main().catch((error: unknown) => {
     console.error(error);
