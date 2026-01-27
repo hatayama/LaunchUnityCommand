@@ -3,7 +3,14 @@
   "version": "0.11.0",
   "description": "Open a Unity project with the matching Editor version (macOS/Windows)",
   "type": "module",
-  "main": "dist/launch.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "bin": {
     "launch-unity": "dist/launch.js"
   },
