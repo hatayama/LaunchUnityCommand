@@ -14,7 +14,8 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "types": ["node"],
-    "declaration": false,
+    "declaration": true,
+    "declarationMap": true,
     "sourceMap": false
   },
   "include": ["src/**/*.ts"],

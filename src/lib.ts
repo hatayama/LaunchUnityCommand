@@ -1,14 +1,12 @@
-#!/usr/bin/env node
-/*
-  launch-unity: Open a Unity project with the matching Editor version.
-  Platforms: macOS, Windows
-*/
+/**
+ * launch-unity core library functions.
+ * Pure library code without CLI entry point or side effects.
+ */
 
 import { execFile, spawn } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, lstatSync, realpathSync } from "node:fs";
 import { rm } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists } from "./unityHub.js";
@@ -46,147 +44,6 @@ const WINDOWS_POWERSHELL = "powershell";
 const UNITY_LOCKFILE_NAME = "UnityLockfile";
 const TEMP_DIRECTORY_NAME = "Temp";
 
-type CommandResult = {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-};
-
-const npmExecutableName = (): string => {
-  return process.platform === "win32" ? "npm.cmd" : "npm";
-};
-
-const runCommand = async (command: string, args: string[]): Promise<CommandResult> => {
-  return await new Promise<CommandResult>((resolve) => {
-    const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
-    let stdout = "";
-    let stderr = "";
-
-    child.stdout?.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf8");
-    });
-    child.stderr?.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
-    });
-
-    child.on("error", (error: Error) => {
-      resolve({ exitCode: 127, stdout, stderr: `${stderr}${error.message}\n` });
-    });
-    child.on("close", (code: number | null) => {
-      resolve({ exitCode: code ?? 1, stdout, stderr });
-    });
-  });
-};
-
-type SemverTriplet = {
-  major: number;
-  minor: number;
-  patch: number;
-  prereleaseIdentifiers?: (number | string)[];
-};
-
-const parseSemverTriplet = (value: string): SemverTriplet | undefined => {
-  const normalized = value.trim();
-  const withoutBuild = normalized.split("+")[0] ?? normalized;
-  const match = withoutBuild.match(/^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/);
-  if (!match) {
-    return undefined;
-  }
-  const major = Number.parseInt(match[1] ?? "", 10);
-  const minor = Number.parseInt(match[2] ?? "", 10);
-  const patch = Number.parseInt(match[3] ?? "", 10);
-  if (!Number.isFinite(major) || !Number.isFinite(minor) || !Number.isFinite(patch)) {
-    return undefined;
-  }
-
-  const prereleaseRaw: string | undefined = match[4] ?? undefined;
-  if (!prereleaseRaw) {
-    return { major, minor, patch };
-  }
-
-  const prereleaseIdentifiers: (number | string)[] = prereleaseRaw
-    .split(".")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0)
-    .map((part) => {
-      const numeric = part.match(/^\d+$/);
-      if (numeric) {
-        const value = Number.parseInt(part, 10);
-        if (Number.isFinite(value)) {
-          return value;
-        }
-      }
-      return part;
-    });
-
-  if (prereleaseIdentifiers.length === 0) {
-    return { major, minor, patch };
-  }
-
-  return { major, minor, patch, prereleaseIdentifiers };
-};
-
-const compareSemverTriplet = (left: SemverTriplet, right: SemverTriplet): number => {
-  if (left.major !== right.major) {
-    return left.major < right.major ? -1 : 1;
-  }
-  if (left.minor !== right.minor) {
-    return left.minor < right.minor ? -1 : 1;
-  }
-  if (left.patch !== right.patch) {
-    return left.patch < right.patch ? -1 : 1;
-  }
-
-  const leftPre = left.prereleaseIdentifiers;
-  const rightPre = right.prereleaseIdentifiers;
-
-  if (!leftPre && !rightPre) {
-    return 0;
-  }
-  if (!leftPre && rightPre) {
-    return 1;
-  }
-  if (leftPre && !rightPre) {
-    return -1;
-  }
-
-  const leftIdentifiers = leftPre ?? [];
-  const rightIdentifiers = rightPre ?? [];
-  const length = Math.max(leftIdentifiers.length, rightIdentifiers.length);
-
-  for (let i = 0; i < length; i++) {
-    const leftId = leftIdentifiers[i];
-    const rightId = rightIdentifiers[i];
-    if (leftId === undefined && rightId === undefined) {
-      return 0;
-    }
-    if (leftId === undefined) {
-      return -1;
-    }
-    if (rightId === undefined) {
-      return 1;
-    }
-    if (leftId === rightId) {
-      continue;
-    }
-
-    const leftIsNumber = typeof leftId === "number";
-    const rightIsNumber = typeof rightId === "number";
-    if (leftIsNumber && rightIsNumber) {
-      return leftId < rightId ? -1 : 1;
-    }
-    if (leftIsNumber !== rightIsNumber) {
-      return leftIsNumber ? -1 : 1;
-    }
-
-    const leftText = String(leftId);
-    const rightText = String(rightId);
-    return leftText < rightText ? -1 : 1;
-  }
-
-  return 0;
-};
-
 export function parseArgs(argv: string[]): LaunchOptions {
   const args: string[] = argv.slice(2);
 
@@ -211,12 +68,10 @@ export function parseArgs(argv: string[]): LaunchOptions {
   for (let i = 0; i < cliArgs.length; i++) {
     const arg = cliArgs[i] ?? "";
     if (arg === "--help" || arg === "-h") {
-      printHelp();
-      process.exit(0);
+      continue; // Skip help flag - caller should handle
     }
     if (arg === "--version" || arg === "-v") {
-      console.log(getVersion());
-      process.exit(0);
+      continue; // Skip version flag - caller should handle
     }
     if (arg === "-r" || arg === "--restart") {
       restart = true;
@@ -306,58 +161,18 @@ export function parseArgs(argv: string[]): LaunchOptions {
   return options;
 }
 
-function getVersion(): string {
-  const currentFilePath: string = fileURLToPath(import.meta.url);
-  const currentDir: string = dirname(currentFilePath);
-  const packageJsonPath: string = join(currentDir, "..", "package.json");
-  const packageJson: { version: string } = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-  return packageJson.version;
-}
-
-function printHelp(): void {
-  const help = `
-Usage:
-  launch-unity [OPTIONS] [PROJECT_PATH] [-- UNITY_ARGS...]
-  launch-unity update
-
-Open a Unity project with the matching Unity Editor version installed by Unity Hub.
-
-Arguments:
-  PROJECT_PATH  Optional. If omitted, searches under the current directory (see --max-depth)
-
-Forwarding:
-  Everything after -- is forwarded to Unity unchanged.
-  If UNITY_ARGS includes -buildTarget, the -p option is ignored.
-
-Options:
-  -h, --help          Show this help message
-  -v, --version       Show version number
-  -r, --restart       Kill running Unity and restart
-  -p, --platform <P>  Passed to Unity as -buildTarget (e.g., StandaloneOSX, Android, iOS)
-  --max-depth <N>     Search depth when PROJECT_PATH is omitted (default 3, -1 unlimited)
-  -u, -a, --unity-hub-entry, --add-unity-hub
-                      Add to Unity Hub if missing and update lastModified (does not launch Unity)
-  -f, --favorite      Add to Unity Hub as favorite (does not launch Unity)
-
-Commands:
-  update              Update launch-unity to the latest version (npm global install)
-`;
-  process.stdout.write(help);
-}
-
 export function getUnityVersion(projectPath: string): string {
   const versionFile: string = join(projectPath, "ProjectSettings", "ProjectVersion.txt");
   if (!existsSync(versionFile)) {
-    console.error(`Error: ProjectVersion.txt not found at ${versionFile}`);
-    console.error("This does not appear to be a Unity project.");
-    process.exit(1);
+    throw new Error(
+      `ProjectVersion.txt not found at ${versionFile}. This does not appear to be a Unity project.`,
+    );
   }
 
   const content: string = readFileSync(versionFile, "utf8");
   const version: string | undefined = content.match(/m_EditorVersion:\s*([^\s\n]+)/)?.[1];
   if (!version) {
-    console.error(`Error: Could not extract Unity version from ${versionFile}`);
-    process.exit(1);
+    throw new Error(`Could not extract Unity version from ${versionFile}`);
   }
   return version;
 }
@@ -396,13 +211,6 @@ function getUnityPath(version: string): string {
     return getUnityPathWindows(version);
   }
   return `/Applications/Unity/Hub/Editor/${version}/Unity.app/Contents/MacOS/Unity`;
-}
-
-function ensureProjectPath(projectPath: string): void {
-  if (!existsSync(projectPath)) {
-    console.error(`Error: Project directory not found: ${projectPath}`);
-    process.exit(1);
-  }
 }
 
 const removeTrailingSeparators = (target: string): string => {
@@ -708,8 +516,7 @@ export async function killRunningUnity(projectPath: string): Promise<void> {
 
   const exited = await waitForProcessExit(pid);
   if (!exited) {
-    console.error(`Error: Failed to kill Unity (PID: ${pid}) within ${KILL_TIMEOUT_MS / 1000}s.`);
-    process.exit(1);
+    throw new Error(`Failed to kill Unity (PID: ${pid}) within ${KILL_TIMEOUT_MS / 1000}s.`);
   }
 
   console.log("Unity killed.");
@@ -823,9 +630,9 @@ export function launch(opts: LaunchResolvedOptions): void {
   console.log(`Detected Unity version: ${unityVersion}`);
 
   if (!existsSync(unityPath)) {
-    console.error(`Error: Unity ${unityVersion} not found at ${unityPath}`);
-    console.error("Please install Unity through Unity Hub.");
-    process.exit(1);
+    throw new Error(
+      `Unity ${unityVersion} not found at ${unityPath}. Please install Unity through Unity Hub.`,
+    );
   }
 
   console.log("Opening Unity...");
@@ -846,157 +653,5 @@ export function launch(opts: LaunchResolvedOptions): void {
   child.unref();
 }
 
-async function main(): Promise<void> {
-  const options: LaunchOptions = parseArgs(process.argv);
-
-  if (options.subcommand === "update") {
-    await runSelfUpdate();
-    return;
-  }
-
-  let resolvedProjectPath: string | undefined = options.projectPath;
-  if (!resolvedProjectPath) {
-    const searchRoot = process.cwd();
-    const depthInfo = options.searchMaxDepth === -1 ? "unlimited" : String(options.searchMaxDepth);
-    console.log(`No PROJECT_PATH provided. Searching under ${searchRoot} (max-depth: ${depthInfo})...`);
-    const found = findUnityProjectBfs(searchRoot, options.searchMaxDepth);
-    if (!found) {
-      console.error(`Error: Unity project not found under ${searchRoot}.`);
-      process.exit(1);
-      return;
-    }
-    console.log(`Selected project: ${found}`);
-    resolvedProjectPath = found;
-  }
-
-  ensureProjectPath(resolvedProjectPath);
-  const unityVersion = getUnityVersion(resolvedProjectPath);
-
-  // Unity Hub only mode: -a or -f flags skip launching Unity
-  const unityHubOnlyMode = options.addUnityHub || options.favoriteUnityHub;
-  if (unityHubOnlyMode) {
-    console.log(`Detected Unity version: ${unityVersion}`);
-    console.log(`Project Path: ${resolvedProjectPath}`);
-    const now = new Date();
-    try {
-      await ensureProjectEntryAndUpdate(resolvedProjectPath, unityVersion, now, options.favoriteUnityHub);
-      console.log("Unity Hub entry updated.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`Failed to update Unity Hub: ${message}`);
-    }
-    return;
-  }
-
-  if (options.restart) {
-    await killRunningUnity(resolvedProjectPath);
-  } else {
-    const runningProcess = await findRunningUnityProcess(resolvedProjectPath);
-    if (runningProcess) {
-      console.log(
-        `Unity process already running for project: ${resolvedProjectPath} (PID: ${runningProcess.pid})`,
-      );
-      await focusUnityProcess(runningProcess.pid);
-      process.exit(0);
-      return;
-    }
-  }
-
-  await handleStaleLockfile(resolvedProjectPath);
-  const resolved: LaunchResolvedOptions = {
-    projectPath: resolvedProjectPath,
-    platform: options.platform,
-    unityArgs: options.unityArgs,
-    unityVersion,
-  };
-  launch(resolved);
-  // Best-effort update of Unity Hub's lastModified timestamp.
-  const now = new Date();
-  try {
-    await updateLastModifiedIfExists(resolvedProjectPath, now);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.warn(`Failed to update Unity Hub lastModified: ${message}`);
-  }
-}
-
-async function runSelfUpdate(): Promise<void> {
-  const currentVersion: string = getVersion();
-  const npmCmd: string = npmExecutableName();
-
-  const latestResult = await runCommand(npmCmd, ["view", "launch-unity", "version"]);
-  if (latestResult.exitCode !== 0) {
-    console.error("Error: Failed to retrieve latest version from npm.");
-    if (latestResult.stderr.trim().length > 0) {
-      process.stderr.write(latestResult.stderr);
-    }
-    process.exit(1);
-    return;
-  }
-
-  const latestVersion: string = latestResult.stdout.trim();
-  if (latestVersion.length === 0) {
-    console.error("Error: npm returned an empty version.");
-    process.exit(1);
-    return;
-  }
-
-  console.log(`Current: ${currentVersion}`);
-  console.log(`Latest:  ${latestVersion}`);
-
-  const currentSemver = parseSemverTriplet(currentVersion);
-  const latestSemver = parseSemverTriplet(latestVersion);
-
-  if (currentSemver && latestSemver) {
-    const cmp = compareSemverTriplet(currentSemver, latestSemver);
-    if (cmp >= 0) {
-      console.log("Already up to date.");
-      return;
-    }
-  } else {
-    if (currentVersion === latestVersion) {
-      console.log("Already up to date.");
-      return;
-    }
-  }
-
-  const installArgs: string[] = ["install", "-g", `launch-unity@${latestVersion}`, "--ignore-scripts"];
-  console.log(`Running: ${npmCmd} ${installArgs.join(" ")}`);
-  const installResult = await runCommand(npmCmd, installArgs);
-  if (installResult.exitCode === 0) {
-    console.log("Update complete.");
-    return;
-  }
-
-  console.error(`Error: Update failed (exit code ${installResult.exitCode}).`);
-  if (installResult.stderr.trim().length > 0) {
-    process.stderr.write(installResult.stderr);
-  }
-
-  if (process.platform === "darwin") {
-    const sudoSuggestion = `sudo ${npmCmd} ${installArgs.join(" ")}`;
-    console.error("If this is a permissions issue, try:");
-    console.error(`  ${sudoSuggestion}`);
-  }
-
-  process.exit(1);
-}
-
-// Only run main() when this file is executed directly (not when imported as a library)
-let isDirectExecution = false;
-if (typeof process.argv[1] === "string") {
-  try {
-    isDirectExecution =
-      import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
-  } catch {
-    isDirectExecution = false;
-  }
-}
-if (isDirectExecution) {
-  main().catch((error: unknown) => {
-    console.error(error);
-    process.exit(1);
-  });
-}
-
-
+// Re-export Unity Hub functions
+export { ensureProjectEntryAndUpdate, updateLastModifiedIfExists };
