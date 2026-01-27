@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.11.0...launch-unity-v0.12.0) (2026-01-27)
+
+
+### Features
+
+* add library exports for programmatic usage ([#73](https://github.com/hatayama/LaunchUnityCommand/issues/73)) ([6a2538f](https://github.com/hatayama/LaunchUnityCommand/commit/6a2538f324ca09b001a43d472417948befc98f90))
+
 ## [0.11.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.10.1...launch-unity-v0.11.0) (2026-01-18)
 
 
