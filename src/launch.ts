@@ -8,7 +8,7 @@ import { execFile, spawn } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, lstatSync, realpathSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists } from "./unityHub.js";
@@ -983,7 +983,9 @@ async function runSelfUpdate(): Promise<void> {
 }
 
 // Only run main() when this file is executed directly (not when imported as a library)
-const isDirectExecution = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'));
+const isDirectExecution =
+  typeof process.argv[1] === "string" &&
+  import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
 if (isDirectExecution) {
   main().catch((error: unknown) => {
     console.error(error);

@@ -164,16 +164,15 @@ export function parseArgs(argv: string[]): LaunchOptions {
 export function getUnityVersion(projectPath: string): string {
   const versionFile: string = join(projectPath, "ProjectSettings", "ProjectVersion.txt");
   if (!existsSync(versionFile)) {
-    console.error(`Error: ProjectVersion.txt not found at ${versionFile}`);
-    console.error("This does not appear to be a Unity project.");
-    process.exit(1);
+    throw new Error(
+      `ProjectVersion.txt not found at ${versionFile}. This does not appear to be a Unity project.`,
+    );
   }
 
   const content: string = readFileSync(versionFile, "utf8");
   const version: string | undefined = content.match(/m_EditorVersion:\s*([^\s\n]+)/)?.[1];
   if (!version) {
-    console.error(`Error: Could not extract Unity version from ${versionFile}`);
-    process.exit(1);
+    throw new Error(`Could not extract Unity version from ${versionFile}`);
   }
   return version;
 }
@@ -517,8 +516,7 @@ export async function killRunningUnity(projectPath: string): Promise<void> {
 
   const exited = await waitForProcessExit(pid);
   if (!exited) {
-    console.error(`Error: Failed to kill Unity (PID: ${pid}) within ${KILL_TIMEOUT_MS / 1000}s.`);
-    process.exit(1);
+    throw new Error(`Failed to kill Unity (PID: ${pid}) within ${KILL_TIMEOUT_MS / 1000}s.`);
   }
 
   console.log("Unity killed.");
@@ -632,9 +630,9 @@ export function launch(opts: LaunchResolvedOptions): void {
   console.log(`Detected Unity version: ${unityVersion}`);
 
   if (!existsSync(unityPath)) {
-    console.error(`Error: Unity ${unityVersion} not found at ${unityPath}`);
-    console.error("Please install Unity through Unity Hub.");
-    process.exit(1);
+    throw new Error(
+      `Unity ${unityVersion} not found at ${unityPath}. Please install Unity through Unity Hub.`,
+    );
   }
 
   console.log("Opening Unity...");
