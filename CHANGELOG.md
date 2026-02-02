@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.12.0...launch-unity-v0.13.0) (2026-02-02)
+
+
+### Features
+
+* support Unity Hub custom CLI arguments ([#77](https://github.com/hatayama/LaunchUnityCommand/issues/77)) ([c2afae3](https://github.com/hatayama/LaunchUnityCommand/commit/c2afae38b81975b05d7550a69f7ef80485b36dd6))
+
 ## [0.12.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.11.0...launch-unity-v0.12.0) (2026-01-27)
 
 
