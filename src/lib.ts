@@ -9,7 +9,7 @@ import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
-import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists } from "./unityHub.js";
+import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs, parseCliArgs } from "./unityHub.js";
 
 export type LaunchOptions = {
   subcommand?: "update";
@@ -623,7 +623,7 @@ export function findUnityProjectBfs(rootDir: string, maxDepth: number): string |
   return undefined;
 }
 
-export function launch(opts: LaunchResolvedOptions): void {
+export async function launch(opts: LaunchResolvedOptions): Promise<void> {
   const { projectPath, platform, unityArgs, unityVersion } = opts;
   const unityPath: string = getUnityPath(unityVersion);
 
@@ -645,6 +645,11 @@ export function launch(opts: LaunchResolvedOptions): void {
     args.push("-buildTarget", platform);
   }
 
+  const hubCliArgs: string[] = await getProjectCliArgs(projectPath);
+  if (hubCliArgs.length > 0) {
+    args.push(...hubCliArgs);
+  }
+
   if (unityArgs.length > 0) {
     args.push(...unityArgs);
   }
@@ -654,4 +659,4 @@ export function launch(opts: LaunchResolvedOptions): void {
 }
 
 // Re-export Unity Hub functions
-export { ensureProjectEntryAndUpdate, updateLastModifiedIfExists };
+export { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs, parseCliArgs };
