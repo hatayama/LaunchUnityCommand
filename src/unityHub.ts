@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { realpathSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
+import assert from "node:assert";
 
 type UnityHubProjectEntry = {
   readonly title?: string | null;
@@ -15,6 +16,12 @@ type UnityHubProjectsJson = {
   readonly schema_version?: string;
   readonly data?: Record<string, UnityHubProjectEntry>;
 };
+
+type UnityHubProjectInfo = {
+  readonly cliArgs?: string;
+};
+
+type UnityHubProjectsInfoJson = Record<string, UnityHubProjectInfo>;
 
 const resolveUnityHubProjectFiles = (): string[] => {
   if (process.platform === "darwin") {
@@ -208,6 +215,117 @@ export const updateLastModifiedIfExists = async (
     }
     return;
   }
+};
+
+const resolveUnityHubProjectsInfoFile = (): string | undefined => {
+  if (process.platform === "darwin") {
+    const home: string | undefined = process.env.HOME;
+    if (!home) {
+      return undefined;
+    }
+    return join(home, "Library", "Application Support", "UnityHub", "projectsInfo.json");
+  }
+  if (process.platform === "win32") {
+    const appData: string | undefined = process.env.APPDATA;
+    if (!appData) {
+      return undefined;
+    }
+    return join(appData, "UnityHub", "projectsInfo.json");
+  }
+  return undefined;
+};
+
+export const parseCliArgs = (cliArgsString: string): string[] => {
+  assert(cliArgsString !== null && cliArgsString !== undefined, "cliArgsString must not be null");
+
+  const trimmed: string = cliArgsString.trim();
+  if (trimmed.length === 0) {
+    return [];
+  }
+
+  const tokens: string[] = [];
+  let current = "";
+  let inQuote: string | null = null;
+
+  for (const char of trimmed) {
+    if (inQuote !== null) {
+      if (char === inQuote) {
+        inQuote = null;
+      } else {
+        current += char;
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      inQuote = char;
+      continue;
+    }
+
+    if (char === " ") {
+      if (current.length > 0) {
+        tokens.push(current);
+        current = "";
+      }
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current.length > 0) {
+    tokens.push(current);
+  }
+
+  return tokens;
+};
+
+export const getProjectCliArgs = async (projectPath: string): Promise<string[]> => {
+  assert(projectPath !== null && projectPath !== undefined, "projectPath must not be null");
+
+  const infoFilePath: string | undefined = resolveUnityHubProjectsInfoFile();
+  if (!infoFilePath) {
+    logDebug("projectsInfo.json path could not be resolved.");
+    return [];
+  }
+
+  logDebug(`Reading projectsInfo.json: ${infoFilePath}`);
+
+  let content: string;
+  try {
+    content = await readFile(infoFilePath, "utf8");
+  } catch {
+    logDebug("projectsInfo.json not found or not readable.");
+    return [];
+  }
+
+  let json: UnityHubProjectsInfoJson;
+  try {
+    json = JSON.parse(content) as UnityHubProjectsInfoJson;
+  } catch {
+    logDebug("projectsInfo.json parse failed.");
+    return [];
+  }
+
+  const normalizedProjectPath: string = normalizePath(projectPath);
+  const projectKey: string | undefined = Object.keys(json).find((key) =>
+    pathsEqual(key, normalizedProjectPath),
+  );
+  if (!projectKey) {
+    logDebug(`No entry found for project: ${normalizedProjectPath}`);
+    return [];
+  }
+
+  const projectInfo: UnityHubProjectInfo | undefined = json[projectKey];
+  const cliArgsString: string | undefined = projectInfo?.cliArgs;
+  if (!cliArgsString || cliArgsString.trim().length === 0) {
+    logDebug("cliArgs is empty or not defined.");
+    return [];
+  }
+
+  const parsed: string[] = parseCliArgs(cliArgsString);
+  logDebug(`Parsed Unity Hub cliArgs: ${JSON.stringify(parsed)}`);
+  return parsed;
 };
 
 

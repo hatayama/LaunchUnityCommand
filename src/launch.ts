@@ -11,7 +11,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
-import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists } from "./unityHub.js";
+import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs } from "./unityHub.js";
 
 export type LaunchOptions = {
   subcommand?: "update";
@@ -816,7 +816,7 @@ export function findUnityProjectBfs(rootDir: string, maxDepth: number): string |
   return undefined;
 }
 
-export function launch(opts: LaunchResolvedOptions): void {
+export async function launch(opts: LaunchResolvedOptions): Promise<void> {
   const { projectPath, platform, unityArgs, unityVersion } = opts;
   const unityPath: string = getUnityPath(unityVersion);
 
@@ -836,6 +836,11 @@ export function launch(opts: LaunchResolvedOptions): void {
   const unityArgsContainBuildTarget: boolean = hasBuildTargetArg(unityArgs);
   if (platform && platform.length > 0 && !unityArgsContainBuildTarget) {
     args.push("-buildTarget", platform);
+  }
+
+  const hubCliArgs: string[] = await getProjectCliArgs(projectPath);
+  if (hubCliArgs.length > 0) {
+    args.push(...hubCliArgs);
   }
 
   if (unityArgs.length > 0) {
@@ -909,7 +914,7 @@ async function main(): Promise<void> {
     unityArgs: options.unityArgs,
     unityVersion,
   };
-  launch(resolved);
+  await launch(resolved);
   // Best-effort update of Unity Hub's lastModified timestamp.
   const now = new Date();
   try {
