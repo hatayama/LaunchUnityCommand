@@ -250,6 +250,8 @@ export const parseCliArgs = (cliArgsString: string): string[] => {
   for (const char of trimmed) {
     if (inQuote !== null) {
       if (char === inQuote) {
+        tokens.push(current);
+        current = "";
         inQuote = null;
       } else {
         current += char;
