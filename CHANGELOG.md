@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.12.0...launch-unity-v1.0.0) (2026-02-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* launch() function is now async and returns Promise<void>
+
+### Features
+
+* support Unity Hub custom CLI arguments ([#77](https://github.com/hatayama/LaunchUnityCommand/issues/77)) ([6e32fe0](https://github.com/hatayama/LaunchUnityCommand/commit/6e32fe07af8b3ab552ff14e51f6e447e1a52874f))
+
 ## [0.12.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.11.0...launch-unity-v0.12.0) (2026-01-27)
 
 
