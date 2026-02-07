@@ -863,7 +863,7 @@ async function main(): Promise<void> {
   if (!resolvedProjectPath) {
     const searchRoot = process.cwd();
     const depthInfo = options.searchMaxDepth === -1 ? "unlimited" : String(options.searchMaxDepth);
-    console.log(`No PROJECT_PATH provided. Searching under ${searchRoot} (max-depth: ${depthInfo})...`);
+    console.log(`Searching for Unity project under ${searchRoot} (max-depth: ${depthInfo})...`);
     const found = findUnityProjectBfs(searchRoot, options.searchMaxDepth);
     if (!found) {
       console.error(`Error: Unity project not found under ${searchRoot}.`);
