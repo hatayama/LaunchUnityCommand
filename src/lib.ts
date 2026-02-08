@@ -470,6 +470,7 @@ export async function handleStaleLockfile(projectPath: string): Promise<void> {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(`Failed to delete UnityLockfile: ${message}`);
   }
+  console.log();
 }
 
 const KILL_POLL_INTERVAL_MS = 100;
@@ -507,6 +508,7 @@ export async function killRunningUnity(projectPath: string): Promise<void> {
   const processInfo = await findRunningUnityProcess(projectPath);
   if (!processInfo) {
     console.log("No running Unity process found for this project.");
+    console.log();
     return;
   }
 
@@ -520,6 +522,7 @@ export async function killRunningUnity(projectPath: string): Promise<void> {
   }
 
   console.log("Unity killed.");
+  console.log();
 }
 
 function hasBuildTargetArg(unityArgs: string[]): boolean {
