@@ -20,6 +20,7 @@ export type LaunchOptions = {
   unityArgs: string[];
   searchMaxDepth: number; // -1 for unlimited; default 3
   restart: boolean;
+  quit: boolean;
   addUnityHub: boolean;
   favoriteUnityHub: boolean;
 };
@@ -204,6 +205,7 @@ export function parseArgs(argv: string[]): LaunchOptions {
   const positionals: string[] = [];
   let maxDepth = 3; // default 3; -1 means unlimited
   let restart = false;
+  let quit = false;
   let addUnityHub = false;
   let favoriteUnityHub = false;
   let platform: string | undefined;
@@ -220,6 +222,10 @@ export function parseArgs(argv: string[]): LaunchOptions {
     }
     if (arg === "-r" || arg === "--restart") {
       restart = true;
+      continue;
+    }
+    if (arg === "-q" || arg === "--quit") {
+      quit = true;
       continue;
     }
     if (
@@ -291,6 +297,7 @@ export function parseArgs(argv: string[]): LaunchOptions {
     unityArgs,
     searchMaxDepth: maxDepth,
     restart,
+    quit,
     addUnityHub,
     favoriteUnityHub,
   };
@@ -333,6 +340,7 @@ Options:
   -h, --help          Show this help message
   -v, --version       Show version number
   -r, --restart       Kill running Unity and restart
+  -q, --quit          Quit running Unity gracefully (force-kill on timeout)
   -p, --platform <P>  Passed to Unity as -buildTarget (e.g., StandaloneOSX, Android, iOS)
   --max-depth <N>     Search depth when PROJECT_PATH is omitted (default 3, -1 unlimited)
   -u, -a, --unity-hub-entry, --add-unity-hub
@@ -667,6 +675,7 @@ export async function handleStaleLockfile(projectPath: string): Promise<void> {
 
 const KILL_POLL_INTERVAL_MS = 100;
 const KILL_TIMEOUT_MS = 10000;
+const GRACEFUL_QUIT_TIMEOUT_MS = 10000;
 
 function isProcessAlive(pid: number): boolean {
   try {
@@ -685,9 +694,9 @@ function killProcess(pid: number): void {
   }
 }
 
-async function waitForProcessExit(pid: number): Promise<boolean> {
+async function waitForProcessExit(pid: number, timeoutMs: number): Promise<boolean> {
   const start = Date.now();
-  while (Date.now() - start < KILL_TIMEOUT_MS) {
+  while (Date.now() - start < timeoutMs) {
     if (!isProcessAlive(pid)) {
       return true;
     }
@@ -708,7 +717,7 @@ export async function killRunningUnity(projectPath: string): Promise<void> {
   console.log(`Killing Unity (PID: ${pid})...`);
   killProcess(pid);
 
-  const exited = await waitForProcessExit(pid);
+  const exited = await waitForProcessExit(pid, KILL_TIMEOUT_MS);
   if (!exited) {
     console.error(`Error: Failed to kill Unity (PID: ${pid}) within ${KILL_TIMEOUT_MS / 1000}s.`);
     process.exit(1);
@@ -716,6 +725,74 @@ export async function killRunningUnity(projectPath: string): Promise<void> {
 
   console.log("Unity killed.");
   console.log();
+}
+
+async function sendGracefulQuitMac(pid: number): Promise<void> {
+  // System Eventsのquitコマンドやtell application "Unity" to quitではUnityが正常終了しないため、
+  // Cmd+Qキーストロークを送ってユーザー操作と同じ終了フローを発動させる
+  const script = [
+    'tell application "System Events"',
+    `  set frontmost of (first process whose unix id is ${pid}) to true`,
+    '  keystroke "q" using {command down}',
+    "end tell",
+  ].join("\n");
+  try {
+    await execFileAsync("osascript", ["-e", script]);
+  } catch {
+    // Process may have already exited
+  }
+}
+
+async function sendGracefulQuitWindows(pid: number): Promise<void> {
+  // process.kill(pid, "SIGTERM")はWindows上でプロセスを即殺するため、Stop-ProcessでWM_CLOSEを送る
+  const scriptLines: string[] = [
+    "$ErrorActionPreference = 'Stop'",
+    `try { Stop-Process -Id ${pid} } catch { }`,
+  ];
+  try {
+    await execFileAsync(WINDOWS_POWERSHELL, ["-NoProfile", "-Command", scriptLines.join("\n")]);
+  } catch {
+    // Process may have already exited
+  }
+}
+
+async function sendGracefulQuit(pid: number): Promise<void> {
+  if (process.platform === "win32") {
+    await sendGracefulQuitWindows(pid);
+    return;
+  }
+  await sendGracefulQuitMac(pid);
+}
+
+export async function quitRunningUnity(projectPath: string): Promise<void> {
+  const processInfo = await findRunningUnityProcess(projectPath);
+  if (!processInfo) {
+    console.log("No running Unity process found for this project.");
+    return;
+  }
+
+  const pid = processInfo.pid;
+  console.log(`Quitting Unity (PID: ${pid})...`);
+
+  await sendGracefulQuit(pid);
+  console.log(`Sent graceful quit signal. Waiting up to ${GRACEFUL_QUIT_TIMEOUT_MS / 1000}s...`);
+
+  const exitedGracefully = await waitForProcessExit(pid, GRACEFUL_QUIT_TIMEOUT_MS);
+  if (exitedGracefully) {
+    console.log("Unity quit gracefully.");
+    return;
+  }
+
+  console.log("Unity did not respond to graceful quit. Force killing...");
+  killProcess(pid);
+
+  const exitedAfterKill = await waitForProcessExit(pid, KILL_TIMEOUT_MS);
+  if (!exitedAfterKill) {
+    console.error(`Error: Failed to kill Unity (PID: ${pid}) within ${KILL_TIMEOUT_MS / 1000}s.`);
+    process.exit(1);
+  }
+
+  console.log("Unity force killed.");
 }
 
 function hasBuildTargetArg(unityArgs: string[]): boolean {
@@ -898,6 +975,16 @@ async function main(): Promise<void> {
       const message = error instanceof Error ? error.message : String(error);
       console.warn(`Failed to update Unity Hub: ${message}`);
     }
+    return;
+  }
+
+  if (options.quit && options.restart) {
+    console.error("Error: --quit and --restart cannot be used together.");
+    process.exit(1);
+  }
+
+  if (options.quit) {
+    await quitRunningUnity(resolvedProjectPath);
     return;
   }
 
