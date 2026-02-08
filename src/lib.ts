@@ -767,5 +767,99 @@ export async function launch(opts: LaunchResolvedOptions): Promise<void> {
   });
 }
 
+export type OrchestrateOptions = {
+  projectPath?: string | undefined;
+  searchRoot: string;
+  searchMaxDepth: number;
+  platform?: string | undefined;
+  unityArgs: string[];
+  restart: boolean;
+  quit: boolean;
+  addUnityHub: boolean;
+  favoriteUnityHub: boolean;
+};
+
+export type OrchestrateResult =
+  | { action: "launched"; projectPath: string; unityVersion: string }
+  | { action: "focused"; projectPath: string; pid: number }
+  | { action: "quit"; projectPath: string }
+  | { action: "killed-and-launched"; projectPath: string; unityVersion: string }
+  | { action: "hub-updated"; projectPath: string; unityVersion: string };
+
+export async function orchestrateLaunch(options: OrchestrateOptions): Promise<OrchestrateResult> {
+  if (options.quit && options.restart) {
+    throw new Error("--quit and --restart cannot be used together.");
+  }
+
+  let resolvedProjectPath: string | undefined = options.projectPath;
+  if (!resolvedProjectPath) {
+    const depthInfo: string = options.searchMaxDepth === -1 ? "unlimited" : String(options.searchMaxDepth);
+    console.log(`Searching for Unity project under ${options.searchRoot} (max-depth: ${depthInfo})...`);
+    const found: string | undefined = findUnityProjectBfs(options.searchRoot, options.searchMaxDepth);
+    if (!found) {
+      throw new Error(`Unity project not found under ${options.searchRoot}.`);
+    }
+    console.log();
+    resolvedProjectPath = found;
+  }
+
+  if (!existsSync(resolvedProjectPath)) {
+    throw new Error(`Project directory not found: ${resolvedProjectPath}`);
+  }
+
+  const unityVersion: string = getUnityVersion(resolvedProjectPath);
+
+  if (options.addUnityHub || options.favoriteUnityHub) {
+    console.log(`Detected Unity version: ${unityVersion}`);
+    console.log(`Project Path: ${resolvedProjectPath}`);
+    const now: Date = new Date();
+    await ensureProjectEntryAndUpdate(resolvedProjectPath, unityVersion, now, options.favoriteUnityHub);
+    console.log("Unity Hub entry updated.");
+    return { action: "hub-updated", projectPath: resolvedProjectPath, unityVersion };
+  }
+
+  if (options.quit) {
+    await quitRunningUnity(resolvedProjectPath);
+    return { action: "quit", projectPath: resolvedProjectPath };
+  }
+
+  const isRestart: boolean = options.restart;
+
+  if (isRestart) {
+    await killRunningUnity(resolvedProjectPath);
+  } else {
+    const runningProcess: UnityProcessInfo | undefined = await findRunningUnityProcess(resolvedProjectPath);
+    if (runningProcess) {
+      console.log(
+        `Unity process already running for project: ${resolvedProjectPath} (PID: ${runningProcess.pid})`,
+      );
+      await focusUnityProcess(runningProcess.pid);
+      return { action: "focused", projectPath: resolvedProjectPath, pid: runningProcess.pid };
+    }
+  }
+
+  await handleStaleLockfile(resolvedProjectPath);
+
+  const resolved: LaunchResolvedOptions = {
+    projectPath: resolvedProjectPath,
+    platform: options.platform,
+    unityArgs: options.unityArgs,
+    unityVersion,
+  };
+  await launch(resolved);
+
+  // Hub timestamp update is non-critical external I/O; failure should not block after successful launch
+  const now: Date = new Date();
+  try {
+    await updateLastModifiedIfExists(resolvedProjectPath, now);
+  } catch (error) {
+    const message: string = error instanceof Error ? error.message : String(error);
+    console.warn(`Failed to update Unity Hub lastModified: ${message}`);
+  }
+
+  const action: "killed-and-launched" | "launched" = isRestart ? "killed-and-launched" : "launched";
+  return { action, projectPath: resolvedProjectPath, unityVersion };
+}
+
 // Re-export Unity Hub functions
 export { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs, parseCliArgs, groupCliArgs };
