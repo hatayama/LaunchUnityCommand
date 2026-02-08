@@ -17,6 +17,7 @@ export {
   findRunningUnityProcess,
   focusUnityProcess,
   killRunningUnity,
+  quitRunningUnity,
   handleStaleLockfile,
   ensureProjectEntryAndUpdate,
   updateLastModifiedIfExists,
