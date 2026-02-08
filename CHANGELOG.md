@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.14.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.13.0...launch-unity-v0.14.0) (2026-02-08)
+
+
+### Features
+
+* Add -q, --quit option for graceful Unity Editor shutdown ([#87](https://github.com/hatayama/LaunchUnityCommand/issues/87)) ([cf96c32](https://github.com/hatayama/LaunchUnityCommand/commit/cf96c32eee9f7928f3a33c0a15a713a0407c3a31))
+* Display Unity Hub launch options on startup ([#85](https://github.com/hatayama/LaunchUnityCommand/issues/85)) ([3df3f33](https://github.com/hatayama/LaunchUnityCommand/commit/3df3f33132ca5bf9c9c5dde435e0f440f26ede6a))
+* Improve spawn error handling and Windows Git Bash compatibility ([#88](https://github.com/hatayama/LaunchUnityCommand/issues/88)) ([d29d118](https://github.com/hatayama/LaunchUnityCommand/commit/d29d118327bd560fd4a44554f5ba7c39f1b76794))
+
 ## [0.13.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.12.0...launch-unity-v0.13.0) (2026-02-02)
 
 
