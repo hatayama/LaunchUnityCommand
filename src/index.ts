@@ -20,4 +20,7 @@ export {
   handleStaleLockfile,
   ensureProjectEntryAndUpdate,
   updateLastModifiedIfExists,
+  getProjectCliArgs,
+  parseCliArgs,
+  groupCliArgs,
 } from './lib.js';

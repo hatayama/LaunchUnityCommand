@@ -9,7 +9,7 @@ import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
-import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs, parseCliArgs } from "./unityHub.js";
+import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs, parseCliArgs, groupCliArgs } from "./unityHub.js";
 
 export type LaunchOptions = {
   subcommand?: "update";
@@ -470,6 +470,7 @@ export async function handleStaleLockfile(projectPath: string): Promise<void> {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(`Failed to delete UnityLockfile: ${message}`);
   }
+  console.log();
 }
 
 const KILL_POLL_INTERVAL_MS = 100;
@@ -507,6 +508,7 @@ export async function killRunningUnity(projectPath: string): Promise<void> {
   const processInfo = await findRunningUnityProcess(projectPath);
   if (!processInfo) {
     console.log("No running Unity process found for this project.");
+    console.log();
     return;
   }
 
@@ -520,6 +522,7 @@ export async function killRunningUnity(projectPath: string): Promise<void> {
   }
 
   console.log("Unity killed.");
+  console.log();
 }
 
 function hasBuildTargetArg(unityArgs: string[]): boolean {
@@ -627,8 +630,6 @@ export async function launch(opts: LaunchResolvedOptions): Promise<void> {
   const { projectPath, platform, unityArgs, unityVersion } = opts;
   const unityPath: string = getUnityPath(unityVersion);
 
-  console.log(`Detected Unity version: ${unityVersion}`);
-
   if (!existsSync(unityPath)) {
     throw new Error(
       `Unity ${unityVersion} not found at ${unityPath}. Please install Unity through Unity Hub.`,
@@ -637,6 +638,7 @@ export async function launch(opts: LaunchResolvedOptions): Promise<void> {
 
   console.log("Opening Unity...");
   console.log(`Project Path: ${projectPath}`);
+  console.log(`Detected Unity version: ${unityVersion}`);
 
   const args: string[] = ["-projectPath", projectPath];
 
@@ -647,7 +649,13 @@ export async function launch(opts: LaunchResolvedOptions): Promise<void> {
 
   const hubCliArgs: string[] = await getProjectCliArgs(projectPath);
   if (hubCliArgs.length > 0) {
+    console.log("Unity Hub launch options:");
+    for (const line of groupCliArgs(hubCliArgs)) {
+      console.log(`  ${line}`);
+    }
     args.push(...hubCliArgs);
+  } else {
+    console.log("Unity Hub launch options: none");
   }
 
   if (unityArgs.length > 0) {
@@ -659,4 +667,4 @@ export async function launch(opts: LaunchResolvedOptions): Promise<void> {
 }
 
 // Re-export Unity Hub functions
-export { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs, parseCliArgs };
+export { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs, parseCliArgs, groupCliArgs };
