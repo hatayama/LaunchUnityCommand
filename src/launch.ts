@@ -839,6 +839,8 @@ export async function launch(opts: LaunchResolvedOptions): Promise<void> {
   }
 
   const hubCliArgs: string[] = await getProjectCliArgs(projectPath);
+  const hubCliArgsDisplay: string = hubCliArgs.length > 0 ? hubCliArgs.join(" ") : "none";
+  console.log(`Unity Hub launch options: ${hubCliArgsDisplay}`);
   if (hubCliArgs.length > 0) {
     args.push(...hubCliArgs);
   }
