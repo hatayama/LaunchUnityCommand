@@ -740,8 +740,31 @@ export async function launch(opts: LaunchResolvedOptions): Promise<void> {
     args.push(...unityArgs);
   }
 
-  const child = spawn(unityPath, args, { stdio: "ignore", detached: true });
-  child.unref();
+  return new Promise<void>((resolve, reject) => {
+    const child = spawn(unityPath, args, {
+      stdio: "ignore",
+      detached: true,
+      // Git Bash (MSYS) がWindows パスをUnix 形式に自動変換するのを防ぐ
+      env: {
+        ...process.env,
+        MSYS_NO_PATHCONV: "1",
+      },
+    });
+
+    const handleError = (error: Error): void => {
+      child.removeListener("spawn", handleSpawn);
+      reject(new Error(`Failed to launch Unity: ${error.message}`));
+    };
+
+    const handleSpawn = (): void => {
+      child.removeListener("error", handleError);
+      child.unref();
+      resolve();
+    };
+
+    child.once("error", handleError);
+    child.once("spawn", handleSpawn);
+  });
 }
 
 // Re-export Unity Hub functions
