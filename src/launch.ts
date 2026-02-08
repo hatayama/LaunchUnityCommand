@@ -11,7 +11,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
-import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs } from "./unityHub.js";
+import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs, groupCliArgs } from "./unityHub.js";
 
 export type LaunchOptions = {
   subcommand?: "update";
@@ -839,10 +839,14 @@ export async function launch(opts: LaunchResolvedOptions): Promise<void> {
   }
 
   const hubCliArgs: string[] = await getProjectCliArgs(projectPath);
-  const hubCliArgsDisplay: string = hubCliArgs.length > 0 ? hubCliArgs.join(" ") : "none";
-  console.log(`Unity Hub launch options: ${hubCliArgsDisplay}`);
   if (hubCliArgs.length > 0) {
+    console.log("Unity Hub launch options:");
+    for (const line of groupCliArgs(hubCliArgs)) {
+      console.log(`  ${line}`);
+    }
     args.push(...hubCliArgs);
+  } else {
+    console.log("Unity Hub launch options: none");
   }
 
   if (unityArgs.length > 0) {

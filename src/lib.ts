@@ -9,7 +9,7 @@ import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
-import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs, parseCliArgs } from "./unityHub.js";
+import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs, parseCliArgs, groupCliArgs } from "./unityHub.js";
 
 export type LaunchOptions = {
   subcommand?: "update";
@@ -646,10 +646,14 @@ export async function launch(opts: LaunchResolvedOptions): Promise<void> {
   }
 
   const hubCliArgs: string[] = await getProjectCliArgs(projectPath);
-  const hubCliArgsDisplay: string = hubCliArgs.length > 0 ? hubCliArgs.join(" ") : "none";
-  console.log(`Unity Hub launch options: ${hubCliArgsDisplay}`);
   if (hubCliArgs.length > 0) {
+    console.log("Unity Hub launch options:");
+    for (const line of groupCliArgs(hubCliArgs)) {
+      console.log(`  ${line}`);
+    }
     args.push(...hubCliArgs);
+  } else {
+    console.log("Unity Hub launch options: none");
   }
 
   if (unityArgs.length > 0) {
@@ -661,4 +665,4 @@ export async function launch(opts: LaunchResolvedOptions): Promise<void> {
 }
 
 // Re-export Unity Hub functions
-export { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs, parseCliArgs };
+export { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs, parseCliArgs, groupCliArgs };

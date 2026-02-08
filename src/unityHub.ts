@@ -282,6 +282,26 @@ export const parseCliArgs = (cliArgsString: string): string[] => {
   return tokens;
 };
 
+// "-flag value" pairs are grouped into single strings for display (e.g. ["-foo", "bar", "-baz", "qux"] -> ["-foo bar", "-baz qux"])
+export const groupCliArgs = (args: readonly string[]): string[] => {
+  const groups: string[] = [];
+  let current = "";
+  for (const arg of args) {
+    if (arg.startsWith("-") && current.length > 0) {
+      groups.push(current);
+      current = arg;
+    } else if (current.length === 0) {
+      current = arg;
+    } else {
+      current += ` ${arg}`;
+    }
+  }
+  if (current.length > 0) {
+    groups.push(current);
+  }
+  return groups;
+};
+
 export const getProjectCliArgs = async (projectPath: string): Promise<string[]> => {
   assert(projectPath !== null && projectPath !== undefined, "projectPath must not be null");
 
