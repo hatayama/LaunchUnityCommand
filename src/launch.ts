@@ -823,8 +823,6 @@ export async function launch(opts: LaunchResolvedOptions): Promise<void> {
   const { projectPath, platform, unityArgs, unityVersion } = opts;
   const unityPath: string = getUnityPath(unityVersion);
 
-  console.log(`Detected Unity version: ${unityVersion}`);
-
   if (!existsSync(unityPath)) {
     console.error(`Error: Unity ${unityVersion} not found at ${unityPath}`);
     console.error("Please install Unity through Unity Hub.");
@@ -833,6 +831,7 @@ export async function launch(opts: LaunchResolvedOptions): Promise<void> {
 
   console.log("Opening Unity...");
   console.log(`Project Path: ${projectPath}`);
+  console.log(`Detected Unity version: ${unityVersion}`);
 
   const args: string[] = ["-projectPath", projectPath];
 
