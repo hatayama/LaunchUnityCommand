@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.14.0...launch-unity-v0.15.0) (2026-02-08)
+
+
+### Features
+
+* extract orchestrateLaunch() from CLI main() into lib.ts ([#89](https://github.com/hatayama/LaunchUnityCommand/issues/89)) ([f8dc905](https://github.com/hatayama/LaunchUnityCommand/commit/f8dc905b4e1dae080ce031fd6b0890cbfb212356))
+
 ## [0.14.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.13.0...launch-unity-v0.14.0) (2026-02-08)
 
 
