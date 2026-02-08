@@ -757,11 +757,14 @@ async function sendGracefulQuitWindows(pid: number): Promise<void> {
 }
 
 async function sendGracefulQuit(pid: number): Promise<void> {
+  if (process.platform === "darwin") {
+    await sendGracefulQuitMac(pid);
+    return;
+  }
   if (process.platform === "win32") {
     await sendGracefulQuitWindows(pid);
     return;
   }
-  await sendGracefulQuitMac(pid);
 }
 
 export async function quitRunningUnity(projectPath: string): Promise<void> {
