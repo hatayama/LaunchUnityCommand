@@ -787,6 +787,10 @@ export type OrchestrateResult =
   | { action: "hub-updated"; projectPath: string; unityVersion: string };
 
 export async function orchestrateLaunch(options: OrchestrateOptions): Promise<OrchestrateResult> {
+  if (options.quit && options.restart) {
+    throw new Error("--quit and --restart cannot be used together.");
+  }
+
   let resolvedProjectPath: string | undefined = options.projectPath;
   if (!resolvedProjectPath) {
     const depthInfo: string = options.searchMaxDepth === -1 ? "unlimited" : String(options.searchMaxDepth);
@@ -812,10 +816,6 @@ export async function orchestrateLaunch(options: OrchestrateOptions): Promise<Or
     await ensureProjectEntryAndUpdate(resolvedProjectPath, unityVersion, now, options.favoriteUnityHub);
     console.log("Unity Hub entry updated.");
     return { action: "hub-updated", projectPath: resolvedProjectPath, unityVersion };
-  }
-
-  if (options.quit && options.restart) {
-    throw new Error("--quit and --restart cannot be used together.");
   }
 
   if (options.quit) {
