@@ -534,8 +534,8 @@ export async function killRunningUnity(projectPath: string): Promise<void> {
 }
 
 async function sendGracefulQuitMac(pid: number): Promise<void> {
-  // System Eventsのquitコマンドやtell application "Unity" to quitではUnityが正常終了しないため、
-  // Cmd+Qキーストロークを送ってユーザー操作と同じ終了フローを発動させる
+  // System Events quit and "tell application to quit" leave UnityLockfile behind,
+  // so we send Cmd+Q keystroke to trigger Unity's normal user-initiated shutdown flow
   const script = [
     'tell application "System Events"',
     `  set frontmost of (first process whose unix id is ${pid}) to true`,
@@ -550,10 +550,10 @@ async function sendGracefulQuitMac(pid: number): Promise<void> {
 }
 
 async function sendGracefulQuitWindows(pid: number): Promise<void> {
-  // process.kill(pid, "SIGTERM")はWindows上でプロセスを即殺するため、Stop-ProcessでWM_CLOSEを送る
+  // process.kill(pid, "SIGTERM") forcefully kills on Windows, so use CloseMainWindow() to send WM_CLOSE
   const scriptLines: string[] = [
     "$ErrorActionPreference = 'Stop'",
-    `try { Stop-Process -Id ${pid} } catch { }`,
+    `try { $proc = Get-Process -Id ${pid} -ErrorAction Stop; $proc.CloseMainWindow() | Out-Null } catch { }`,
   ];
   try {
     await execFileAsync(WINDOWS_POWERSHELL, ["-NoProfile", "-Command", scriptLines.join("\n")]);
