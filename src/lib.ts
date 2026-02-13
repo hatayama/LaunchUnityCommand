@@ -452,11 +452,64 @@ async function focusUnityProcessWindows(pid: number): Promise<void> {
   }
 }
 
+async function isLockfileHeldMac(lockfilePath: string): Promise<boolean> {
+  try {
+    const result = await execFileAsync("lsof", [lockfilePath]);
+    const lines: string[] = result.stdout.split("\n").filter((line) => line.length > 0);
+    // lsof output: header line + one line per process holding the file
+    return lines.length > 1;
+  } catch {
+    // lsof returns exit code 1 when no process holds the file
+    return false;
+  }
+}
+
+async function isLockfileHeldWindows(lockfilePath: string): Promise<boolean> {
+  const escapedPath: string = lockfilePath.replace(/'/g, "''");
+  // PowerShell スクリプトは常に exit 0 で終了し、stdout で結果を返す。
+  // これにより PowerShell 自体の実行失敗（ENOENT 等）と区別できる。
+  const scriptLines: string[] = [
+    "try {",
+    `  $f = [System.IO.File]::Open('${escapedPath}', [System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)`,
+    "  $f.Close()",
+    "  Write-Output 'UNLOCKED'",
+    "} catch [System.IO.IOException] {",
+    "  Write-Output 'LOCKED'",
+    "} catch {",
+    "  Write-Output 'UNLOCKED'",
+    "}",
+  ];
+  try {
+    const result = await execFileAsync(WINDOWS_POWERSHELL, ["-NoProfile", "-Command", scriptLines.join("\n")]);
+    return result.stdout.trim() === "LOCKED";
+  } catch {
+    // PowerShell 自体が見つからない/実行できない場合はロックなし扱い
+    return false;
+  }
+}
+
+async function isLockfileHeld(lockfilePath: string): Promise<boolean> {
+  if (process.platform === "darwin") {
+    return await isLockfileHeldMac(lockfilePath);
+  }
+  if (process.platform === "win32") {
+    return await isLockfileHeldWindows(lockfilePath);
+  }
+  return false;
+}
+
 export async function handleStaleLockfile(projectPath: string): Promise<void> {
   const tempDirectoryPath: string = join(projectPath, TEMP_DIRECTORY_NAME);
   const lockfilePath: string = join(tempDirectoryPath, UNITY_LOCKFILE_NAME);
   if (!existsSync(lockfilePath)) {
     return;
+  }
+
+  if (await isLockfileHeld(lockfilePath)) {
+    throw new Error(
+      `Unity appears to be running for this project (lockfile is held: ${lockfilePath}). ` +
+      "Use -r to restart or -q to quit the running instance.",
+    );
   }
 
   console.log(`UnityLockfile found without active Unity process: ${lockfilePath}`);
