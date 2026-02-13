@@ -38,7 +38,7 @@ export type UnityProcessInfo = {
 const execFileAsync = promisify(execFile);
 const UNITY_EXECUTABLE_PATTERN_MAC = /Unity\.app\/Contents\/MacOS\/Unity/i;
 const UNITY_EXECUTABLE_PATTERN_WINDOWS = /Unity\.exe/i;
-const PROJECT_PATH_PATTERN = /-(?:projectPath|projectpath)(?:=|\s+)("[^"]+"|'[^']+'|[^\s"']+)/i;
+const PROJECT_PATH_PATTERN = /-(?:projectPath|projectpath)(?:=|\s+)("[^"]+"|'[^']+'|.+?)(?=\s+-[a-zA-Z]|$)/i;
 const PROCESS_LIST_COMMAND_MAC = "ps";
 const PROCESS_LIST_ARGS_MAC = ["-axo", "pid=,command=", "-ww"];
 const WINDOWS_POWERSHELL = "powershell";
