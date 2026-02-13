@@ -466,8 +466,8 @@ async function isLockfileHeldMac(lockfilePath: string): Promise<boolean> {
 
 async function isLockfileHeldWindows(lockfilePath: string): Promise<boolean> {
   const escapedPath: string = lockfilePath.replace(/'/g, "''");
-  // PowerShell スクリプトは常に exit 0 で終了し、stdout で結果を返す。
-  // これにより PowerShell 自体の実行失敗（ENOENT 等）と区別できる。
+  // Script always exits 0 and reports via stdout, so we can distinguish
+  // a locked file from PowerShell itself being unavailable (ENOENT, etc.).
   const scriptLines: string[] = [
     "try {",
     `  $f = [System.IO.File]::Open('${escapedPath}', [System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)`,
@@ -483,7 +483,7 @@ async function isLockfileHeldWindows(lockfilePath: string): Promise<boolean> {
     const result = await execFileAsync(WINDOWS_POWERSHELL, ["-NoProfile", "-Command", scriptLines.join("\n")]);
     return result.stdout.trim() === "LOCKED";
   } catch {
-    // PowerShell 自体が見つからない/実行できない場合はロックなし扱い
+    // PowerShell not found or failed to execute; treat as unlocked
     return false;
   }
 }
