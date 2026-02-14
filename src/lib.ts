@@ -533,6 +533,8 @@ export async function handleStaleLockfile(projectPath: string): Promise<void> {
   console.log();
 }
 
+const LOCKFILE_POLL_INTERVAL_MS = 100;
+const LOCKFILE_WAIT_TIMEOUT_MS = 5000;
 const KILL_POLL_INTERVAL_MS = 100;
 const KILL_TIMEOUT_MS = 10000;
 const GRACEFUL_QUIT_TIMEOUT_MS = 10000;
@@ -757,6 +759,18 @@ export function findUnityProjectBfs(rootDir: string, maxDepth: number): string |
   return undefined;
 }
 
+async function waitForLockfile(projectPath: string): Promise<void> {
+  const lockfilePath: string = join(projectPath, TEMP_DIRECTORY_NAME, UNITY_LOCKFILE_NAME);
+  const start: number = Date.now();
+  while (Date.now() - start < LOCKFILE_WAIT_TIMEOUT_MS) {
+    if (existsSync(lockfilePath)) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, LOCKFILE_POLL_INTERVAL_MS));
+  }
+  console.warn("Unity launched, but UnityLockfile was not detected within 5s.");
+}
+
 export async function launch(opts: LaunchResolvedOptions): Promise<void> {
   const { projectPath, platform, unityArgs, unityVersion } = opts;
   const unityPath: string = getUnityPath(unityVersion);
@@ -900,6 +914,7 @@ export async function orchestrateLaunch(options: OrchestrateOptions): Promise<Or
     unityVersion,
   };
   await launch(resolved);
+  await waitForLockfile(resolvedProjectPath);
 
   // Hub timestamp update is non-critical external I/O; failure should not block after successful launch
   const now: Date = new Date();
