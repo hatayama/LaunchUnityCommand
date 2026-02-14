@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.1](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.15.0...launch-unity-v0.15.1) (2026-02-14)
+
+
+### Bug Fixes
+
+* prevent duplicate Unity launch with lockfile fallback and space-safe path matching ([#92](https://github.com/hatayama/LaunchUnityCommand/issues/92)) ([ed181b4](https://github.com/hatayama/LaunchUnityCommand/commit/ed181b4fd5dfe0a2a7d749ee939286b691b03fbf))
+
 ## [0.15.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.14.0...launch-unity-v0.15.0) (2026-02-08)
 
 
