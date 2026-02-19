@@ -22,6 +22,7 @@ export {
   killRunningUnity,
   quitRunningUnity,
   handleStaleLockfile,
+  deleteRecoveryDirectory,
   ensureProjectEntryAndUpdate,
   updateLastModifiedIfExists,
   getProjectCliArgs,
