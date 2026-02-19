@@ -27,6 +27,7 @@ launch-unity update
 # Options
 #   -h, --help         Show help
 #   -r, --restart      Kill running Unity and restart
+#   -d, --delete-recovery  Delete Assets/_Recovery before launch
 #   -p, --platform <P> Passed to Unity as -buildTarget (e.g., StandaloneOSX, Android, iOS)
 #   -a, -u, --add-unity-hub, --unity-hub-entry
 #                      Register to Unity Hub (does not launch Unity)
