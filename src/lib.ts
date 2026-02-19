@@ -19,6 +19,7 @@ export type LaunchOptions = {
   searchMaxDepth: number; // -1 for unlimited; default 3
   restart: boolean;
   quit: boolean;
+  deleteRecovery: boolean;
   addUnityHub: boolean;
   favoriteUnityHub: boolean;
 };
@@ -44,6 +45,8 @@ const PROCESS_LIST_ARGS_MAC = ["-axo", "pid=,command=", "-ww"];
 const WINDOWS_POWERSHELL = "powershell";
 const UNITY_LOCKFILE_NAME = "UnityLockfile";
 const TEMP_DIRECTORY_NAME = "Temp";
+const ASSETS_DIRECTORY_NAME = "Assets";
+const RECOVERY_DIRECTORY_NAME = "_Recovery";
 
 export function parseArgs(argv: string[]): LaunchOptions {
   const args: string[] = argv.slice(2);
@@ -63,6 +66,7 @@ export function parseArgs(argv: string[]): LaunchOptions {
   let maxDepth = 3; // default 3; -1 means unlimited
   let restart = false;
   let quit = false;
+  let deleteRecovery = false;
   let addUnityHub = false;
   let favoriteUnityHub = false;
   let platform: string | undefined;
@@ -77,6 +81,10 @@ export function parseArgs(argv: string[]): LaunchOptions {
     }
     if (arg === "-r" || arg === "--restart") {
       restart = true;
+      continue;
+    }
+    if (arg === "-d" || arg === "--delete-recovery") {
+      deleteRecovery = true;
       continue;
     }
     if (arg === "-q" || arg === "--quit") {
@@ -153,6 +161,7 @@ export function parseArgs(argv: string[]): LaunchOptions {
     searchMaxDepth: maxDepth,
     restart,
     quit,
+    deleteRecovery,
     addUnityHub,
     favoriteUnityHub,
   };
@@ -533,6 +542,24 @@ export async function handleStaleLockfile(projectPath: string): Promise<void> {
   console.log();
 }
 
+export async function deleteRecoveryDirectory(projectPath: string): Promise<void> {
+  const recoveryPath: string = join(projectPath, ASSETS_DIRECTORY_NAME, RECOVERY_DIRECTORY_NAME);
+  if (!existsSync(recoveryPath)) {
+    return;
+  }
+
+  console.log(`Deleting recovery directory: ${recoveryPath}`);
+
+  // _Recovery は Unity クラッシュ時の残骸であり、不要なリカバリダイアログを防ぐために削除する
+  try {
+    await rm(recoveryPath, { recursive: true, force: true });
+    console.log("Deleted recovery directory.");
+  } catch (error) {
+    const message: string = error instanceof Error ? error.message : String(error);
+    console.warn(`Failed to delete recovery directory: ${message}`);
+  }
+}
+
 const LOCKFILE_POLL_INTERVAL_MS = 100;
 const LOCKFILE_WAIT_TIMEOUT_MS = 5000;
 const KILL_POLL_INTERVAL_MS = 100;
@@ -842,6 +869,7 @@ export type OrchestrateOptions = {
   unityArgs: string[];
   restart: boolean;
   quit: boolean;
+  deleteRecovery: boolean;
   addUnityHub: boolean;
   favoriteUnityHub: boolean;
 };
@@ -903,6 +931,10 @@ export async function orchestrateLaunch(options: OrchestrateOptions): Promise<Or
       await focusUnityProcess(runningProcess.pid);
       return { action: "focused", projectPath: resolvedProjectPath, pid: runningProcess.pid };
     }
+  }
+
+  if (options.deleteRecovery) {
+    await deleteRecoveryDirectory(resolvedProjectPath);
   }
 
   await handleStaleLockfile(resolvedProjectPath);

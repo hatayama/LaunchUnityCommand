@@ -170,6 +170,7 @@ function parseArgs(argv: string[]): LaunchOptions {
   let maxDepth = 3; // default 3; -1 means unlimited
   let restart = false;
   let quit = false;
+  let deleteRecovery = false;
   let addUnityHub = false;
   let favoriteUnityHub = false;
   let platform: string | undefined;
@@ -186,6 +187,10 @@ function parseArgs(argv: string[]): LaunchOptions {
     }
     if (arg === "-r" || arg === "--restart") {
       restart = true;
+      continue;
+    }
+    if (arg === "-d" || arg === "--delete-recovery") {
+      deleteRecovery = true;
       continue;
     }
     if (arg === "-q" || arg === "--quit") {
@@ -262,6 +267,7 @@ function parseArgs(argv: string[]): LaunchOptions {
     searchMaxDepth: maxDepth,
     restart,
     quit,
+    deleteRecovery,
     addUnityHub,
     favoriteUnityHub,
   };
@@ -304,6 +310,7 @@ Options:
   -h, --help          Show this help message
   -v, --version       Show version number
   -r, --restart       Kill running Unity and restart
+  -d, --delete-recovery  Delete Assets/_Recovery before launch
   -q, --quit          Quit running Unity gracefully (force-kill on timeout)
   -p, --platform <P>  Passed to Unity as -buildTarget (e.g., StandaloneOSX, Android, iOS)
   --max-depth <N>     Search depth when PROJECT_PATH is omitted (default 3, -1 unlimited)
@@ -333,6 +340,7 @@ async function main(): Promise<void> {
     unityArgs: options.unityArgs,
     restart: options.restart,
     quit: options.quit,
+    deleteRecovery: options.deleteRecovery,
     addUnityHub: options.addUnityHub,
     favoriteUnityHub: options.favoriteUnityHub,
   });
