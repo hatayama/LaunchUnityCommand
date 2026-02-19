@@ -63,6 +63,16 @@ jobs:
         if: ${{ steps.release.outputs.release_created }}
         run: npm publish --provenance --access public
 
+      - name: Notify uLoopMCP of new release
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ secrets.ULOOP_DISPATCH_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          gh api repos/hatayama/uLoopMCP/dispatches \
+            -f event_type="launch-unity-released" \
+            -f "client_payload[version]=$VERSION"
+
   publish:
     name: publish
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode != 'release' }}
