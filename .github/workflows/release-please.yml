@@ -65,6 +65,7 @@ jobs:
 
       - name: Notify uLoopMCP of new release
         if: ${{ steps.release.outputs.release_created }}
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.ULOOP_DISPATCH_TOKEN }}
         run: |
