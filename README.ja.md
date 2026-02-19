@@ -27,6 +27,7 @@ launch-unity update
 # オプション
 #   -h, --help         ヘルプを表示
 #   -r, --restart      Unityを再起動
+#   -d, --delete-recovery  起動前に Assets/_Recovery を削除
 #   -p, --platform <P> Unityの -buildTarget に渡す値（例: StandaloneOSX, Android, iOS）
 #   -a, -u, --add-unity-hub, --unity-hub-entry
 #                      Unity Hub に登録（Unityは起動しない）
