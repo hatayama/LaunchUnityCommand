@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.16.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.15.1...launch-unity-v0.16.0) (2026-02-19)
+
+
+### Features
+
+* add -d/--delete-recovery option to delete Assets/_Recovery before launch ([#103](https://github.com/hatayama/LaunchUnityCommand/issues/103)) ([9c55857](https://github.com/hatayama/LaunchUnityCommand/commit/9c5585730dc6241fae852e356b6598ed2b221005))
+
+
+### Bug Fixes
+
+* **deps:** upgrade eslint to v10 and consolidate typescript-eslint packages ([#101](https://github.com/hatayama/LaunchUnityCommand/issues/101)) ([4533025](https://github.com/hatayama/LaunchUnityCommand/commit/45330250d34fdc273d2d10caa974568911b9b9fb))
+
 ## [0.15.1](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.15.0...launch-unity-v0.15.1) (2026-02-14)
 
 
