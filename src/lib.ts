@@ -419,17 +419,27 @@ export async function focusUnityProcess(pid: number): Promise<void> {
   }
 }
 
-async function isGuiProcessMac(pid: number): Promise<boolean> {
+type GuiProcessState = "visible" | "not-visible" | "unknown";
+
+function isMacAutomationPermissionError(error: unknown): boolean {
+  const message: string = error instanceof Error ? error.message : String(error);
+  return message.includes("(-10004)") || message.includes("Not authorized to send Apple events");
+}
+
+async function isGuiProcessMac(pid: number): Promise<GuiProcessState> {
   const script = `tell application "System Events" to exists (first process whose unix id is ${pid})`;
   try {
     const result = await execFileAsync("osascript", ["-e", script]);
-    return result.stdout.trim() === "true";
-  } catch {
-    return false;
+    return result.stdout.trim() === "true" ? "visible" : "not-visible";
+  } catch (error) {
+    if (isMacAutomationPermissionError(error)) {
+      return "unknown";
+    }
+    return "not-visible";
   }
 }
 
-async function isGuiProcessWindows(pid: number): Promise<boolean> {
+async function isGuiProcessWindows(pid: number): Promise<GuiProcessState> {
   const scriptLines: string[] = [
     "$ErrorActionPreference = 'Stop'",
     `$proc = Get-Process -Id ${pid} -ErrorAction Stop`,
@@ -437,20 +447,20 @@ async function isGuiProcessWindows(pid: number): Promise<boolean> {
   ];
   try {
     const result = await execFileAsync(WINDOWS_POWERSHELL, ["-NoProfile", "-Command", scriptLines.join("\n")]);
-    return result.stdout.trim() === "true";
+    return result.stdout.trim() === "true" ? "visible" : "not-visible";
   } catch {
-    return false;
+    return "unknown";
   }
 }
 
-async function isGuiProcess(pid: number): Promise<boolean> {
+async function isGuiProcess(pid: number): Promise<GuiProcessState> {
   if (process.platform === "darwin") {
     return await isGuiProcessMac(pid);
   }
   if (process.platform === "win32") {
     return await isGuiProcessWindows(pid);
   }
-  return false;
+  return "unknown";
 }
 
 async function focusUnityProcessMac(pid: number): Promise<void> {
@@ -959,11 +969,17 @@ export async function orchestrateLaunch(options: OrchestrateOptions): Promise<Or
   } else {
     const runningProcess: UnityProcessInfo | undefined = await findRunningUnityProcess(resolvedProjectPath);
     if (runningProcess) {
-      const hasGui: boolean = await isGuiProcess(runningProcess.pid);
-      if (!hasGui) {
+      const guiState: GuiProcessState = await isGuiProcess(runningProcess.pid);
+      if (guiState === "not-visible") {
         throw new Error(
           `Unity process (PID: ${runningProcess.pid}) found but has no visible window. ` +
             "Use -r to restart or -q to quit the running instance.",
+        );
+      }
+      if (guiState === "unknown") {
+        console.warn(
+          "Could not verify Unity window visibility (System Events access denied). " +
+            "Trying to focus the existing Unity process anyway.",
         );
       }
       console.log(
