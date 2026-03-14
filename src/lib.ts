@@ -419,6 +419,40 @@ export async function focusUnityProcess(pid: number): Promise<void> {
   }
 }
 
+async function isGuiProcessMac(pid: number): Promise<boolean> {
+  const script = `tell application "System Events" to exists (first process whose unix id is ${pid})`;
+  try {
+    const result = await execFileAsync("osascript", ["-e", script]);
+    return result.stdout.trim() === "true";
+  } catch {
+    return false;
+  }
+}
+
+async function isGuiProcessWindows(pid: number): Promise<boolean> {
+  const scriptLines: string[] = [
+    "$ErrorActionPreference = 'Stop'",
+    `$proc = Get-Process -Id ${pid} -ErrorAction Stop`,
+    "if ($proc.MainWindowHandle -ne 0) { Write-Output 'true' } else { Write-Output 'false' }",
+  ];
+  try {
+    const result = await execFileAsync(WINDOWS_POWERSHELL, ["-NoProfile", "-Command", scriptLines.join("\n")]);
+    return result.stdout.trim() === "true";
+  } catch {
+    return false;
+  }
+}
+
+async function isGuiProcess(pid: number): Promise<boolean> {
+  if (process.platform === "darwin") {
+    return await isGuiProcessMac(pid);
+  }
+  if (process.platform === "win32") {
+    return await isGuiProcessWindows(pid);
+  }
+  return false;
+}
+
 async function focusUnityProcessMac(pid: number): Promise<void> {
   const script = `tell application "System Events" to set frontmost of (first process whose unix id is ${pid}) to true`;
   try {
@@ -925,6 +959,13 @@ export async function orchestrateLaunch(options: OrchestrateOptions): Promise<Or
   } else {
     const runningProcess: UnityProcessInfo | undefined = await findRunningUnityProcess(resolvedProjectPath);
     if (runningProcess) {
+      const hasGui: boolean = await isGuiProcess(runningProcess.pid);
+      if (!hasGui) {
+        throw new Error(
+          `Unity process (PID: ${runningProcess.pid}) found but has no visible window. ` +
+            "Use -r to restart or -q to quit the running instance.",
+        );
+      }
       console.log(
         `Unity process already running for project: ${resolvedProjectPath} (PID: ${runningProcess.pid})`,
       );
