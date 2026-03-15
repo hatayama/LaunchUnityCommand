@@ -423,7 +423,7 @@ type GuiProcessState = "visible" | "not-visible" | "unknown";
 
 function isMacAutomationPermissionError(error: unknown): boolean {
   const message: string = error instanceof Error ? error.message : String(error);
-  return message.includes("(-10004)") || message.includes("Not authorized to send Apple events");
+  return message.includes("(-1743)") || message.includes("Not authorized to send Apple events");
 }
 
 async function isGuiProcessMac(pid: number): Promise<GuiProcessState> {
@@ -978,7 +978,7 @@ export async function orchestrateLaunch(options: OrchestrateOptions): Promise<Or
       }
       if (guiState === "unknown") {
         console.warn(
-          "Could not verify Unity window visibility (System Events access denied). " +
+          "Could not verify Unity window visibility. " +
             "Trying to focus the existing Unity process anyway.",
         );
       }
