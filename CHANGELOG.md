@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.16.0...launch-unity-v0.17.0) (2026-03-15)
+
+
+### Features
+
+* detect zombie Unity processes and guide users to recovery options ([#113](https://github.com/hatayama/LaunchUnityCommand/issues/113)) ([c6f0fa2](https://github.com/hatayama/LaunchUnityCommand/commit/c6f0fa2dbf3ece64035bbf17c780878c76d6d368))
+
 ## [0.16.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.15.1...launch-unity-v0.16.0) (2026-02-19)
 
 
