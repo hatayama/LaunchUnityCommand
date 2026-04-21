@@ -47,6 +47,7 @@ const UNITY_LOCKFILE_NAME = "UnityLockfile";
 const TEMP_DIRECTORY_NAME = "Temp";
 const ASSETS_DIRECTORY_NAME = "Assets";
 const RECOVERY_DIRECTORY_NAME = "_Recovery";
+const UNITY_STARTUP_WAIT_MESSAGE = "Waiting for Unity to finish starting...";
 
 export function parseArgs(argv: string[]): LaunchOptions {
   const args: string[] = argv.slice(2);
@@ -925,6 +926,12 @@ export type OrchestrateResult =
   | { action: "killed-and-launched"; projectPath: string; unityVersion: string }
   | { action: "hub-updated"; projectPath: string; unityVersion: string };
 
+export function shouldWaitForUnityStartup(
+  action: OrchestrateResult["action"],
+): action is "launched" | "killed-and-launched" {
+  return action === "launched" || action === "killed-and-launched";
+}
+
 export async function orchestrateLaunch(options: OrchestrateOptions): Promise<OrchestrateResult> {
   if (options.quit && options.restart) {
     throw new Error("--quit and --restart cannot be used together.");
@@ -1003,7 +1010,6 @@ export async function orchestrateLaunch(options: OrchestrateOptions): Promise<Or
     unityVersion,
   };
   await launch(resolved);
-  await waitForLockfile(resolvedProjectPath);
 
   // Hub timestamp update is non-critical external I/O; failure should not block after successful launch
   const now: Date = new Date();
@@ -1015,6 +1021,11 @@ export async function orchestrateLaunch(options: OrchestrateOptions): Promise<Or
   }
 
   const action: "killed-and-launched" | "launched" = isRestart ? "killed-and-launched" : "launched";
+  if (shouldWaitForUnityStartup(action)) {
+    console.log(UNITY_STARTUP_WAIT_MESSAGE);
+    await waitForLockfile(resolvedProjectPath);
+  }
+
   return { action, projectPath: resolvedProjectPath, unityVersion };
 }
 
