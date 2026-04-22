@@ -879,6 +879,10 @@ export async function launch(opts: LaunchResolvedOptions): Promise<void> {
     args.push(...unityArgs);
   }
 
+  // Print the wait message before spawn resolves because Unity startup can take
+  // noticeable time after the launch options line, which otherwise looks like a stall.
+  console.log(UNITY_STARTUP_WAIT_MESSAGE);
+
   return new Promise<void>((resolve, reject) => {
     const child = spawn(unityPath, args, {
       stdio: "ignore",
@@ -1022,7 +1026,6 @@ export async function orchestrateLaunch(options: OrchestrateOptions): Promise<Or
 
   const action: "killed-and-launched" | "launched" = isRestart ? "killed-and-launched" : "launched";
   if (shouldWaitForUnityStartup(action)) {
-    console.log(UNITY_STARTUP_WAIT_MESSAGE);
     await waitForLockfile(resolvedProjectPath);
   }
 
