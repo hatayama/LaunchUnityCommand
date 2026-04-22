@@ -32,7 +32,12 @@ export function launchUnityProcess(
 
     const handleSpawn = (): void => {
       child.removeListener("error", handleError);
-      onSpawned();
+      try {
+        onSpawned();
+      } catch (error) {
+        reject(error);
+        return;
+      }
       child.unref();
       resolve();
     };

@@ -65,3 +65,23 @@ test("launchUnityProcess does not run onSpawned when the child process errors im
   assert.deepEqual(notifications, []);
   assert.equal(child.unrefCallCount, 0);
 });
+
+test("launchUnityProcess rejects when onSpawned throws", async () => {
+  const child = new FakeChildProcess();
+
+  const spawnProcess = () => {
+    queueMicrotask(() => {
+      child.emit("spawn");
+    });
+    return child;
+  };
+
+  await assert.rejects(
+    launchUnityProcess(spawnProcess, "/Applications/Unity", ["-projectPath", "/tmp/project"], () => {
+      throw new Error("progress callback failed");
+    }),
+    /progress callback failed/,
+  );
+
+  assert.equal(child.unrefCallCount, 0);
+});
