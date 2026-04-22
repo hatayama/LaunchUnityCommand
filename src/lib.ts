@@ -9,6 +9,7 @@ import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { launchUnityProcess } from "./launchUnityProcess.js";
 import { ensureProjectEntryAndUpdate, updateLastModifiedIfExists, getProjectCliArgs, parseCliArgs, groupCliArgs } from "./unityHub.js";
 
 export type LaunchOptions = {
@@ -879,34 +880,8 @@ export async function launch(opts: LaunchResolvedOptions): Promise<void> {
     args.push(...unityArgs);
   }
 
-  // Print the wait message before spawn resolves because Unity startup can take
-  // noticeable time after the launch options line, which otherwise looks like a stall.
-  console.log(UNITY_STARTUP_WAIT_MESSAGE);
-
-  return new Promise<void>((resolve, reject) => {
-    const child = spawn(unityPath, args, {
-      stdio: "ignore",
-      detached: true,
-      // Git Bash (MSYS) がWindows パスをUnix 形式に自動変換するのを防ぐ
-      env: {
-        ...process.env,
-        MSYS_NO_PATHCONV: "1",
-      },
-    });
-
-    const handleError = (error: Error): void => {
-      child.removeListener("spawn", handleSpawn);
-      reject(new Error(`Failed to launch Unity: ${error.message}`));
-    };
-
-    const handleSpawn = (): void => {
-      child.removeListener("error", handleError);
-      child.unref();
-      resolve();
-    };
-
-    child.once("error", handleError);
-    child.once("spawn", handleSpawn);
+  return launchUnityProcess(spawn, unityPath, args, () => {
+    console.log(UNITY_STARTUP_WAIT_MESSAGE);
   });
 }
 
