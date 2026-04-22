@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.17.0...launch-unity-v0.17.1) (2026-04-22)
+
+
+### Bug Fixes
+
+* startup progress appears immediately after Unity Hub launch options ([#130](https://github.com/hatayama/LaunchUnityCommand/issues/130)) ([ec2c248](https://github.com/hatayama/LaunchUnityCommand/commit/ec2c248e0d4c451329b9d71ab1e194b9883da0e0))
+
 ## [0.17.0](https://github.com/hatayama/LaunchUnityCommand/compare/launch-unity-v0.16.0...launch-unity-v0.17.0) (2026-03-15)
 
 
